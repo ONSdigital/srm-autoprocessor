@@ -1,0 +1,20 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+sqlalchemy = "*"
+structlog = "*"
+
+[dev-packages]
+pylint = "*"
+black = "*"
+pytest = "*"
+pytest-xdist = "*"
+ruff = "*"
+pytest-cov = "*"
+mypy = "*"
+
+[requires]
+python_version = "3.12"
