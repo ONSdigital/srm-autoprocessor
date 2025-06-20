@@ -1,7 +1,7 @@
 {
   "ignorePatterns": [
     {
-      "pattern": "ons-python-template/generate"
+      "pattern": "ONSdigital/srm-autoprocessor"
     }
   ],
   "retryOn429": true,

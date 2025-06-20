@@ -1,6 +1,6 @@
 import pytest
 
-from {{ module_name }}.calculator import Calculator
+from srm_autoprocessor.calculator import Calculator
 
 
 @pytest.fixture()

@@ -2,7 +2,7 @@
 
 ## What visibility is the repository set to?
 
-The repository is set to: **{{ repository_visibility | capitalize }}**
+The repository is set to: **Internal**
 
 ## What decision led to this?
 
