@@ -27,6 +27,7 @@ jobs:
           # this fetches all history so that we can read each commit
           fetch-depth: 0
           ref: ${{ github.head_ref }}
+          token: ${{ secrets.WORKFLOW_TOKEN }}
 
       - name: Check Repository is not a Template
         uses: actions/github-script@v7
