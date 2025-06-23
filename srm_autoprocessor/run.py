@@ -1,5 +1,6 @@
 import csv
 import logging
+import uuid
 from pathlib import Path
 from time import sleep
 
@@ -9,9 +10,11 @@ from structlog import wrap_logger
 
 from srm_autoprocessor.db import engine
 from srm_autoprocessor.models.job import Job
+from srm_autoprocessor.models.job_row import JobRow
 
 logger = wrap_logger(logging.getLogger(__name__))
 
+CHUNK_SIZE = 500
 
 def run_app():
     while True:
@@ -19,7 +22,7 @@ def run_app():
         logger.info("Check to see if any jobs available")
         #TODO Use SQLAlchemy to get list of jobs
         with Session(engine) as session:
-            stmt = select(Job).where(Job.job_status.in_(["FILE_UPLOADED","VALIDATED_OK"]))
+            stmt = select(Job).where(Job.job_status.in_(["FILE_UPLOADED","VALIDATED_OK","STAGING_IN_PROGRESS"]))
             jobs = session.execute(stmt).scalars().all()
             print(f"Jobs available: {len(jobs)}")
             for job in jobs:
@@ -64,7 +67,38 @@ def run_app():
                                             job.collection_exercise.survey.sample_validation_rules]
                         print(expected_columns)
                         header_row_correction = 1
-                        # TODO handle without header row?
+
+                        for stage_number in range(0, job.staging_row_number):
+                            next(csvfile)
+                            # TODO handle without header row?
+                        while job.staging_row_number < job.file_row_count - header_row_correction:
+                            job_rows = []
+                            i = 0
+                            while i < CHUNK_SIZE:
+                                try:
+                                    line = next(csvfile)
+                                except StopIteration:
+                                    break
+                                if len(line) != len(header):
+                                    logger.error(f"Row {job.staging_row_number} does not match expected columns for job {job.id}")
+                                    # TODO handle error
+                                    break
+
+                                job_row = JobRow(
+                                    job_row_status="STAGED",
+                                    original_row_data=line,
+                                    original_row_line_number=job.staging_row_number,
+                                    row_data={header[i]: line[i] for i in range(len(header))},
+                                    job_id=job.id,
+                                    id=uuid.uuid4()
+                                )
+                                job.staging_row_number += 1
+                                job_rows.append(job_row)
+                                i =+ 1
+                            session.add(job_rows)
+                            session.commit()
+
+
 
 
         #TODO Switch statement to handle job types

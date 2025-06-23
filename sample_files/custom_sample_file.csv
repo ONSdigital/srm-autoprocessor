@@ -1,0 +1,8 @@
+ADDRESS_LINE1,ADDRESS_LINE2,ADDRESS_LINE3,TOWN_NAME,POSTCODE,PHONE_NUMBER,EMAIL_ADDRESS
+House 7,Bob Street,Abercynon,Newport,cf37rew,07132456828,test@test.com
+10 Morgan Street,Orchard Lane,Mountain Ash,Cardiff,abc123,07132456828,test@test.com
+1 Robert Street,,,RCT,abc123,07987654321,test@test.com
+2 Robert Street,123 ())__robery an&£()%ue,,RCT,xyz999,07132456828,test@test.com
+3 Robert Street,,,RCT,xyz999,07132456828,test@test.com
+Flat 1,Margeret Street,Graig,Swansea,SW56 MFH,07132456828,test@test.com
+56 Newport Road,Brooklyn Avenue,Cathays,Cardiff,C34 ESL,07132456828,test@test.com

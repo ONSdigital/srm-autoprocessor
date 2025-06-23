@@ -61,6 +61,7 @@ class Job(Base):
     collection_exercise_id = mapped_column(ForeignKey("collection_exercise.id"), nullable=False)
 
     collection_exercise: Mapped["CollectionExercise"] = relationship("CollectionExercise")
+    job_rows: Mapped[list["JobRow"]] = relationship("JobRow", back_populates="job")
 
     def as_dict(self) -> dict[str, str | int | None]:
         """Returns a dictionary representation of the Job object, in types which are compatible with JSON."""
