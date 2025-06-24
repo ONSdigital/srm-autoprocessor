@@ -22,7 +22,7 @@ def run_app():
         logger.info("Check to see if any jobs available")
         #TODO Use SQLAlchemy to get list of jobs
         with Session(engine) as session:
-            stmt = select(Job).where(Job.job_status.in_(["FILE_UPLOADED","STAGING_IN_PROGRESS"]))
+            stmt = select(Job).where(Job.job_status.in_(["FILE_UPLOADED","STAGING_IN_PROGRESS", "VALIDATED_OK"]))
             jobs = session.execute(stmt).scalars().all()
             print(f"Jobs available: {len(jobs)}")
             for job in jobs:
@@ -38,6 +38,8 @@ def run_app():
                         with open(job_file, "r", newline="") as file:
                             csvfile = csv.reader(file, delimiter=",")
                             header = next(csvfile)
+                            if header and header[0].startswith('\ufeff'):
+                                header[0] = header[0].lstrip('\ufeff')
                             expected_columns = [validation_rule["columnName"] for validation_rule in job.collection_exercise.survey.sample_validation_rules]
                             print(expected_columns)
                             if len(header) != len(expected_columns):
@@ -63,6 +65,8 @@ def run_app():
                     with open(job_file, "r", newline="") as file:
                         csvfile = csv.reader(file, delimiter=",")
                         header = next(csvfile)
+                        if header and header[0].startswith('\ufeff'):
+                            header[0] = header[0].lstrip('\ufeff')
                         expected_columns = [validation_rule["columnName"] for validation_rule in
                                             job.collection_exercise.survey.sample_validation_rules]
                         print(expected_columns)
@@ -99,6 +103,10 @@ def run_app():
                             session.commit()
                     job.job_status = "VALIDATION_IN_PROGRESS"
                     session.commit()
+                elif job.job_status == "VALIDATED_OK":
+                    job.job_status = "PROCESSING_IN_PROGRESS"
+                    session.commit()
+
 
 
 
