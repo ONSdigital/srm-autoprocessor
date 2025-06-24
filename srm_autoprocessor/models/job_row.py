@@ -28,7 +28,7 @@ class JobRow(Base):
     original_row_data = mapped_column(BYTEA, nullable=False)
     original_row_line_number = mapped_column(Integer, nullable=False)
     row_data = mapped_column(JSONB, nullable=True)
-    validation_error_description = mapped_column(BYTEA, nullable=True)
+    validation_error_descriptions = mapped_column(BYTEA, nullable=True)
     job_id = mapped_column(ForeignKey("job.id"), nullable=False)
 
     job: Mapped["Job"] = relationship("Job", back_populates="job_rows")

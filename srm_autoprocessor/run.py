@@ -22,7 +22,7 @@ def run_app():
         logger.info("Check to see if any jobs available")
         #TODO Use SQLAlchemy to get list of jobs
         with Session(engine) as session:
-            stmt = select(Job).where(Job.job_status.in_(["FILE_UPLOADED","VALIDATED_OK","STAGING_IN_PROGRESS"]))
+            stmt = select(Job).where(Job.job_status.in_(["FILE_UPLOADED","STAGING_IN_PROGRESS"]))
             jobs = session.execute(stmt).scalars().all()
             print(f"Jobs available: {len(jobs)}")
             for job in jobs:
@@ -86,7 +86,7 @@ def run_app():
 
                                 job_row = JobRow(
                                     job_row_status="STAGED",
-                                    original_row_data=line,
+                                    original_row_data=",".join(line).encode('utf-8'),
                                     original_row_line_number=job.staging_row_number,
                                     row_data={header[i]: line[i] for i in range(len(header))},
                                     job_id=job.id,
@@ -95,8 +95,11 @@ def run_app():
                                 job.staging_row_number += 1
                                 job_rows.append(job_row)
                                 i =+ 1
-                            session.add(job_rows)
+                            session.add_all(job_rows)
                             session.commit()
+                    job.job_status = "VALIDATION_IN_PROGRESS"
+                    session.commit()
+
 
 
 
