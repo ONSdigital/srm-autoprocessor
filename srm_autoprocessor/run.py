@@ -31,30 +31,10 @@ def run_app():
                     job_file = Path(f"./sample_files/{job.file_name}")
                     if not job_file.exists():
                         logger.error(f"File {job.file_name} does not exist for job {job.id}")
-                        continue
-                    if job.collection_exercise.survey.sample_with_header_row:
-                        logger.info(f"Job {job.id} has a header row, processing file with header")
-                        # Process file with header
-                        with open(job_file, "r", newline="") as file:
-                            csvfile = csv.reader(file, delimiter=",")
-                            header = next(csvfile)
-                            if header and header[0].startswith('\ufeff'):
-                                header[0] = header[0].lstrip('\ufeff')
-                            expected_columns = [validation_rule["columnName"] for validation_rule in job.collection_exercise.survey.sample_validation_rules]
-                            print(expected_columns)
-                            if len(header) != len(expected_columns):
-                                logger.error(f"Header row does not match expected columns for job {job.id}")
-                                # TODO handle error
-                                continue
-                            else:
-                                for header_row, expected_column in zip(header, expected_columns):
-                                    if header_row != expected_column:
-                                        logger.error(f"Header row {header_row} does not match expected column {expected_column} for job {job.id}")
-                                        # TODO handle error
-                                        continue
+                        return False
+                    job_status = process_file_with_header(job, job_file)
 
-                    job.job_status = "STAGING_IN_PROGRESS"
-
+                    job.job_status = job_status
                     session.commit()
                 elif job.job_status == "STAGING_IN_PROGRESS":
                     logger.info(f"Job {job.id} is in staging, processing file")
@@ -62,56 +42,79 @@ def run_app():
                     if not job_file.exists():
                         logger.error(f"File {job.file_name} does not exist for job {job.id}")
                         continue
-                    with open(job_file, "r", newline="") as file:
-                        csvfile = csv.reader(file, delimiter=",")
-                        header = next(csvfile)
-                        if header and header[0].startswith('\ufeff'):
-                            header[0] = header[0].lstrip('\ufeff')
-                        expected_columns = [validation_rule["columnName"] for validation_rule in
-                                            job.collection_exercise.survey.sample_validation_rules]
-                        print(expected_columns)
-                        header_row_correction = 1
-
-                        for stage_number in range(0, job.staging_row_number):
-                            next(csvfile)
-                            # TODO handle without header row?
-                        while job.staging_row_number < job.file_row_count - header_row_correction:
-                            job_rows = []
-                            i = 0
-                            while i < CHUNK_SIZE:
-                                try:
-                                    line = next(csvfile)
-                                except StopIteration:
-                                    break
-                                if len(line) != len(header):
-                                    logger.error(f"Row {job.staging_row_number} does not match expected columns for job {job.id}")
-                                    # TODO handle error
-                                    break
-
-                                job_row = JobRow(
-                                    job_row_status="STAGED",
-                                    original_row_data=",".join(line).encode('utf-8'),
-                                    original_row_line_number=job.staging_row_number,
-                                    row_data={header[i]: line[i] for i in range(len(header))},
-                                    job_id=job.id,
-                                    id=uuid.uuid4()
-                                )
-                                job.staging_row_number += 1
-                                job_rows.append(job_row)
-                                i =+ 1
-                            session.add_all(job_rows)
-                            session.commit()
+                    staging_job_rows(job, job_file, session)
                     job.job_status = "VALIDATION_IN_PROGRESS"
                     session.commit()
                 elif job.job_status == "VALIDATED_OK":
                     job.job_status = "PROCESSING_IN_PROGRESS"
                     session.commit()
 
+        sleep(5)
+
+def process_file_with_header(job, job_file):
+    if job.collection_exercise.survey.sample_with_header_row:
+        logger.info(f"Job {job.id} has a header row, processing file with header")
+        with open(job_file, "r", newline="") as file:
+            csvfile = csv.reader(file, delimiter=",")
+            header = next(csvfile)
+            if header and header[0].startswith('\ufeff'):
+                header[0] = header[0].lstrip('\ufeff')
+            expected_columns = [validation_rule["columnName"] for validation_rule in job.collection_exercise.survey.sample_validation_rules]
+            print(expected_columns)
+            if len(header) != len(expected_columns):
+                logger.error(f"Header row does not match expected columns for job {job.id}")
+                job_status = "VALIDATED_TOTAL_FAILURE"
+                job.fatal_error_description = "Header row does not have expected number of columns"
+                return job_status
+            else:
+                for header_row, expected_column in zip(header, expected_columns):
+                    if header_row != expected_column:
+                        logger.error(f"Header row {header_row} does not match expected column {expected_column} for job {job.id}")
+                        job_status = "VALIDATED_TOTAL_FAILURE"
+                        job.fatal_error_description = f"Header row {header_row} does not match expected column {expected_column}"
+                        return job_status
+
+        return "STAGING_IN_PROGRESS"
+    return "STAGING_IN_PROGRESS"
 
 
+def staging_job_rows(job, job_file, session):
+    with open(job_file, "r", newline="") as file:
+        csvfile = csv.reader(file, delimiter=",")
+        header = next(csvfile)
+        if header and header[0].startswith('\ufeff'):
+            header[0] = header[0].lstrip('\ufeff')
+        expected_columns = [validation_rule["columnName"] for validation_rule in
+                            job.collection_exercise.survey.sample_validation_rules]
+        print(expected_columns)
+        header_row_correction = 1
 
+        for stage_number in range(0, job.staging_row_number):
+            next(csvfile)
+            # TODO handle without header row?
+        while job.staging_row_number < job.file_row_count - header_row_correction:
+            job_rows = []
+            i = 0
+            while i < CHUNK_SIZE:
+                try:
+                    line = next(csvfile)
+                except StopIteration:
+                    break
+                if len(line) != len(header):
+                    logger.error(f"Row {job.staging_row_number} does not match expected columns for job {job.id}")
+                    # TODO handle error
+                    break
 
-
-        #TODO Switch statement to handle job types
-
-        sleep(1)
+                job_row = JobRow(
+                    job_row_status="STAGED",
+                    original_row_data=",".join(line).encode('utf-8'),
+                    original_row_line_number=job.staging_row_number,
+                    row_data={header[i]: line[i] for i in range(len(header))},
+                    job_id=job.id,
+                    id=uuid.uuid4()
+                )
+                job.staging_row_number += 1
+                job_rows.append(job_row)
+                i = + 1
+            session.add_all(job_rows)
+            session.commit()
