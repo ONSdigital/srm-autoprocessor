@@ -30,21 +30,18 @@ def run_app():
             print(f"Jobs available: {len(jobs)}")
             for job in jobs:
                 print(f"Job id: {job.id}, status: {job.job_status}, type: {job.job_type}, file name: {job.file_name}")
-                if job.job_status == "FILE_UPLOADED":
+                if job.job_status in ["FILE_UPLOADED", "STAGING_IN_PROGRESS"]:
                     job_file = get_file_path(job)
-                    if not job_file.exists():
+                    if job_file is None:
                         logger.error(f"File {job.file_name} does not exist for job {job.id}")
                         continue
+                if job.job_status == "FILE_UPLOADED":
                     job_status = process_file_with_header(job, job_file)
 
                     job.job_status = job_status
                     session.commit()
                 elif job.job_status == "STAGING_IN_PROGRESS":
                     logger.info(f"Job {job.id} is in staging, processing file")
-                    job_file = Path(f"./sample_files/{job.file_name}")
-                    if not job_file.exists():
-                        logger.error(f"File {job.file_name} does not exist for job {job.id}")
-                        continue
                     job_status = staging_job_rows(job, job_file, session)
                     job.job_status = job_status
                     session.commit()
@@ -53,6 +50,7 @@ def run_app():
                     session.commit()
 
         sleep(5)
+
 
 def get_file_path(job):
     if Config.RUN_MODE == "CLOUD":
@@ -69,6 +67,7 @@ def get_file_path(job):
     else:
         file_path = Path(Config.SAMPLE_LOCATION) / job.file_name
         return file_path
+
 
 def process_file_with_header(job, job_file):
     if job.collection_exercise.survey.sample_with_header_row:
