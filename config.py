@@ -16,6 +16,9 @@ class Config:
     SQLALCHEMY_DATABASE_URI = (
         f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
+    RUN_MODE = os.getenv("RUN_MODE", "CLOUD")
+    SAMPLE_LOCATION = os.getenv("SAMPLE_LOCATION")
+
 
 class DevelopmentConfig(Config):
     DEBUG = False
@@ -32,6 +35,8 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = (
         f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
+    RUN_MODE = os.getenv("RUN_MODE", "LOCAL")
+    SAMPLE_LOCATION = os.getenv("SAMPLE_LOCATION", "./sample_files")
 
 if Config.ENVIRONMENT == 'DEV':
     Config = DevelopmentConfig

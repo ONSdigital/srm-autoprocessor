@@ -1,13 +1,16 @@
 import csv
 import logging
+import tempfile
 import uuid
 from pathlib import Path
 from time import sleep
 
+from google.cloud import storage
 from sqlalchemy import select, delete
 from sqlalchemy.orm import Session
 from structlog import wrap_logger
 
+from config import Config
 from srm_autoprocessor.db import engine
 from srm_autoprocessor.models.job import Job
 from srm_autoprocessor.models.job_row import JobRow
@@ -28,10 +31,10 @@ def run_app():
             for job in jobs:
                 print(f"Job id: {job.id}, status: {job.job_status}, type: {job.job_type}, file name: {job.file_name}")
                 if job.job_status == "FILE_UPLOADED":
-                    job_file = Path(f"./sample_files/{job.file_name}")
+                    job_file = get_file_path(job)
                     if not job_file.exists():
                         logger.error(f"File {job.file_name} does not exist for job {job.id}")
-                        return False
+                        continue
                     job_status = process_file_with_header(job, job_file)
 
                     job.job_status = job_status
@@ -51,15 +54,28 @@ def run_app():
 
         sleep(5)
 
+def get_file_path(job):
+    if Config.RUN_MODE == "CLOUD":
+        client = storage.Client()
+        bucket = client.bucket(Config.SAMPLE_LOCATION)
+        blob = bucket.blob(job.file_name)
+        if not blob.exists():
+            logger.error(f"File {job.file_name} does not exist in bucket {Config.SAMPLE_LOCATION}")
+            return None
+        temp = tempfile.NamedTemporaryFile(delete=False)
+        blob.download_to_filename(temp.name)
+        temp.close()
+        return temp.name
+    else:
+        file_path = Path(Config.SAMPLE_LOCATION) / job.file_name
+        return file_path
 
 def process_file_with_header(job, job_file):
     if job.collection_exercise.survey.sample_with_header_row:
         logger.info(f"Job {job.id} has a header row, processing file with header")
-        with open(job_file, "r", newline="") as file:
+        with open(job_file, "r", newline="", encoding="utf-8-sig") as file:
             csvfile = csv.reader(file, delimiter=",")
             header = next(csvfile)
-            if header and header[0].startswith('\ufeff'):
-                header[0] = header[0].lstrip('\ufeff')
             expected_columns = [validation_rule["columnName"] for validation_rule in
                                 job.collection_exercise.survey.sample_validation_rules]
             print(expected_columns)
@@ -82,11 +98,9 @@ def process_file_with_header(job, job_file):
 
 
 def staging_job_rows(job, job_file, session):
-    with open(job_file, "r", newline="") as file:
+    with open(job_file, "r", newline="", encoding="utf-8-sig") as file:
         csvfile = csv.reader(file, delimiter=",")
         header = next(csvfile)
-        if header and header[0].startswith('\ufeff'):
-            header[0] = header[0].lstrip('\ufeff')
         header_row_correction = 1
 
         for stage_number in range(0, job.staging_row_number):
