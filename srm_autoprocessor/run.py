@@ -134,14 +134,26 @@ def staging_chunks(csvfile, header, job, session):
         try:
             line = next(csvfile)
         except StopIteration:
-            break
+            # We need to catch the exception but we'll deal with it later
+            line = None
 
-        # TODO Error handling for empty chunks
+        if not line and i == 0:
+            logger.error(f"Failed to process job {job.id} due to an empty chunk, this probably indicates a mismatch "
+                         "between file line count and row count")
+            job_status = "VALIDATED_TOTAL_FAILURE"
+            job.fatal_error_description = ("Failed to process job due to an empty chunk, this probably indicates a "
+                                           "mismatch between file line count and row count")
+            return job_status
+
         if len(line) != len(header):
             logger.error("CSV corrupt: row data does not match columns")
             job_status = "VALIDATED_TOTAL_FAILURE"
             job.fatal_error_description = "CSV corrupt: row data does not match columns"
             return job_status
+
+        if not line:
+            break
+
         job.staging_row_number += 1
         job_row = JobRow(
             job_row_status="STAGED",
