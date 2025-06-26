@@ -48,3 +48,7 @@ megalint:  ## Run the mega-linter.
 		-v /var/run/docker.sock:/var/run/docker.sock:rw \
 		-v $(shell pwd):/tmp/lint:rw \
 		oxsecurity/megalinter:v7
+
+.PHONY: docker-build
+docker-build:  ## Build the Docker image
+	docker build -t europe-west2-docker.pkg.dev/ssdc-rm-ci/docker/srm-autoprocessor .

@@ -158,15 +158,14 @@ def staging_chunks(csvfile: Any, header: list[str], job: Job, session: Session) 
                 "mismatch between file line count and row count"
             )
             return job_status
+        if not line:
+            break
 
         if len(line) != len(header):
             logger.error("CSV corrupt: row data does not match columns")
             job_status = "VALIDATED_TOTAL_FAILURE"
             job.fatal_error_description = "CSV corrupt: row data does not match columns"
             return job_status
-
-        if not line:
-            break
 
         job.staging_row_number += 1
         job_row = JobRow(
