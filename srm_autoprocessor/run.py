@@ -34,6 +34,7 @@ def run_app() -> None:
                 if job.job_status in ["FILE_UPLOADED", "STAGING_IN_PROGRESS"]:
                     job_file: Path | None = get_file_path(job)
                     if job_file is None:
+                        # Do we want to delete the job if the file does not exist? Support tool currently just loops because it expects the file to be picked up by another worker.
                         logger.error(f"File {job.file_name} does not exist for job {job.id}")
                         continue
                 if job.job_status == "FILE_UPLOADED":
@@ -73,6 +74,9 @@ def get_file_path(job: Job) -> Path | None:
     else:
         sample_location: str = config.SAMPLE_LOCATION
         file_path: Path = Path(sample_location) / job.file_name
+        if not file_path.exists():
+            logger.error(f"File {job.file_name} does not exist at path {file_path}")
+            return None
         return file_path
 
 
