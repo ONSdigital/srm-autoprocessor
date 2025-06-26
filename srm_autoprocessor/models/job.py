@@ -8,6 +8,7 @@ from srm_autoprocessor.models.base import SCHEMA_METADATA, Base
 
 if TYPE_CHECKING:
     from .collection_exercise import CollectionExercise  # pragma: no cover
+    from .job_row import JobRow  # pragma: no cover
 
 
 class Job(Base):

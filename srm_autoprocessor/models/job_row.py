@@ -1,14 +1,15 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import UUID, Enum, Integer, ForeignKey
+from sqlalchemy import UUID, Enum, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import BYTEA, JSONB
-from sqlalchemy.orm import mapped_column, relationship, Mapped
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from srm_autoprocessor.models.base import Base, SCHEMA_METADATA
+from srm_autoprocessor.models.base import SCHEMA_METADATA, Base
 
 if TYPE_CHECKING:
     from .job import Job
+
 
 class JobRow(Base):
     __tablename__ = "job_row"
@@ -32,5 +33,3 @@ class JobRow(Base):
     job_id = mapped_column(ForeignKey("job.id"), nullable=False)
 
     job: Mapped["Job"] = relationship("Job", back_populates="job_rows")
-
-

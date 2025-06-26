@@ -6,7 +6,7 @@ from pathlib import Path
 from time import sleep
 
 from google.cloud import storage
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 from structlog import wrap_logger
 
@@ -53,6 +53,7 @@ def run_app():
 
         sleep(5)
 
+
 def handle_file(job_file):
     if Config.RUN_MODE == "CLOUD":
         job_file.unlink(missing_ok=True)  # Remove the temporary file if it exists
@@ -66,9 +67,8 @@ def get_file_path(job):
         if not blob.exists():
             logger.error(f"File {job.file_name} does not exist in bucket {Config.SAMPLE_LOCATION}")
             return None
-        temp = tempfile.NamedTemporaryFile(delete=False)
-        blob.download_to_filename(temp.name)
-        temp.close()
+        with tempfile.NamedTemporaryFile(delete=False) as temp:
+            blob.download_to_filename(temp.name)
         return Path(temp.name)
     else:
         file_path = Path(Config.SAMPLE_LOCATION) / job.file_name
@@ -78,11 +78,13 @@ def get_file_path(job):
 def process_file_with_header(job, job_file):
     if job.collection_exercise.survey.sample_with_header_row:
         logger.info(f"Job {job.id} has a header row, processing file with header")
-        with open(job_file, "r", newline="", encoding="utf-8-sig") as file:
+        with open(job_file, newline="", encoding="utf-8-sig") as file:
             csvfile = csv.reader(file, delimiter=",")
             header = next(csvfile)
-            expected_columns = [validation_rule["columnName"] for validation_rule in
-                                job.collection_exercise.survey.sample_validation_rules]
+            expected_columns = [
+                validation_rule["columnName"]
+                for validation_rule in job.collection_exercise.survey.sample_validation_rules
+            ]
             print(expected_columns)
             if len(header) != len(expected_columns):
                 logger.error(f"Header row does not match expected columns for job {job.id}")
@@ -93,9 +95,12 @@ def process_file_with_header(job, job_file):
                 for header_row, expected_column in zip(header, expected_columns):
                     if header_row != expected_column:
                         logger.error(
-                            f"Header row {header_row} does not match expected column {expected_column} for job {job.id}")
+                            f"Header row {header_row} does not match expected column {expected_column} for job {job.id}"
+                        )
                         job_status = "VALIDATED_TOTAL_FAILURE"
-                        job.fatal_error_description = f"Header row {header_row} does not match expected column {expected_column}"
+                        job.fatal_error_description = (
+                            f"Header row {header_row} does not match expected column {expected_column}"
+                        )
                         return job_status
 
         return "STAGING_IN_PROGRESS"
@@ -103,12 +108,12 @@ def process_file_with_header(job, job_file):
 
 
 def staging_job_rows(job, job_file, session):
-    with open(job_file, "r", newline="", encoding="utf-8-sig") as file:
+    with open(job_file, newline="", encoding="utf-8-sig") as file:
         csvfile = csv.reader(file, delimiter=",")
         header = next(csvfile)
         header_row_correction = 1
 
-        for stage_number in range(0, job.staging_row_number):
+        for _ in range(0, job.staging_row_number):
             next(csvfile)
             # TODO handle without header row?
         while job.staging_row_number < job.file_row_count - header_row_correction:
@@ -133,19 +138,18 @@ def staging_chunks(csvfile, header, job, session):
 
         # TODO Error handling for empty chunks
         if len(line) != len(header):
-            logger.error(
-                "CSV corrupt: row data does not match columns")
+            logger.error("CSV corrupt: row data does not match columns")
             job_status = "VALIDATED_TOTAL_FAILURE"
             job.fatal_error_description = "CSV corrupt: row data does not match columns"
             return job_status
         job.staging_row_number += 1
         job_row = JobRow(
             job_row_status="STAGED",
-            original_row_data=",".join(line).encode('utf-8'),
+            original_row_data=",".join(line).encode("utf-8"),
             original_row_line_number=job.staging_row_number,
             row_data={header[i]: line[i] for i in range(len(header))},
             job_id=job.id,
-            id=uuid.uuid4()
+            id=uuid.uuid4(),
         )
         job_rows.append(job_row)
         i += 1
