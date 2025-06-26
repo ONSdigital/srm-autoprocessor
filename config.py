@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 
 class Config:
@@ -18,6 +19,9 @@ class Config:
     SAMPLE_LOCATION = os.getenv(
         "SAMPLE_LOCATION", "TEST-SAMPLE-FILES"
     )  # Change this to your desired sample files location
+
+    READINESS_FILE_PATH = Path(os.getenv('READINESS_FILE_PATH', 'autoprocessor-ready'))
+
 
 
 def get_config() -> Config:
