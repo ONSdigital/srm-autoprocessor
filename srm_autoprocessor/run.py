@@ -4,13 +4,14 @@ import tempfile
 import uuid
 from pathlib import Path
 from time import sleep
+from typing import Any
 
 from google.cloud import storage
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 from structlog import wrap_logger
 
-from config import Config
+from config import config
 from srm_autoprocessor.db import engine
 from srm_autoprocessor.models.job import Job
 from srm_autoprocessor.models.job_row import JobRow
@@ -20,7 +21,7 @@ logger = wrap_logger(logging.getLogger(__name__))
 CHUNK_SIZE = 500
 
 
-def run_app():
+def run_app() -> None:
     logger.info("App is running")
     logger.info("Check to see if any jobs available")
     while True:
@@ -31,13 +32,12 @@ def run_app():
             for job in jobs:
                 print(f"Job id: {job.id}, status: {job.job_status}, type: {job.job_type}, file name: {job.file_name}")
                 if job.job_status in ["FILE_UPLOADED", "STAGING_IN_PROGRESS"]:
-                    job_file = get_file_path(job)
+                    job_file: Path | None = get_file_path(job)
                     if job_file is None:
                         logger.error(f"File {job.file_name} does not exist for job {job.id}")
                         continue
                 if job.job_status == "FILE_UPLOADED":
                     job_status = process_file_with_header(job, job_file)
-
                     job.job_status = job_status
                     session.commit()
                     handle_file(job_file)
@@ -54,60 +54,70 @@ def run_app():
         sleep(5)
 
 
-def handle_file(job_file):
-    if Config.RUN_MODE == "CLOUD":
+def handle_file(job_file: Path | None) -> None:
+    if config.RUN_MODE == "CLOUD" and job_file is not None:
         job_file.unlink(missing_ok=True)  # Remove the temporary file if it exists
 
 
-def get_file_path(job):
-    if Config.RUN_MODE == "CLOUD":
+def get_file_path(job: Job) -> Path | None:
+    if config.RUN_MODE == "CLOUD":
         client = storage.Client()
-        bucket = client.bucket(Config.SAMPLE_LOCATION)
+        bucket = client.bucket(config.SAMPLE_LOCATION)
         blob = bucket.blob(job.file_name)
         if not blob.exists():
-            logger.error(f"File {job.file_name} does not exist in bucket {Config.SAMPLE_LOCATION}")
+            logger.error(f"File {job.file_name} does not exist in bucket {config.SAMPLE_LOCATION}")
             return None
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             blob.download_to_filename(temp.name)
         return Path(temp.name)
     else:
-        file_path = Path(Config.SAMPLE_LOCATION) / job.file_name
+        sample_location: str = config.SAMPLE_LOCATION
+        file_path: Path = Path(sample_location) / job.file_name
         return file_path
 
 
-def process_file_with_header(job, job_file):
-    if job.collection_exercise.survey.sample_with_header_row:
-        logger.info(f"Job {job.id} has a header row, processing file with header")
-        with open(job_file, newline="", encoding="utf-8-sig") as file:
-            csvfile = csv.reader(file, delimiter=",")
-            header = next(csvfile)
-            expected_columns = [
-                validation_rule["columnName"]
-                for validation_rule in job.collection_exercise.survey.sample_validation_rules
-            ]
-            print(expected_columns)
-            if len(header) != len(expected_columns):
-                logger.error(f"Header row does not match expected columns for job {job.id}")
-                job_status = "VALIDATED_TOTAL_FAILURE"
-                job.fatal_error_description = "Header row does not have expected number of columns"
-                return job_status
-            else:
-                for header_row, expected_column in zip(header, expected_columns):
-                    if header_row != expected_column:
-                        logger.error(
-                            f"Header row {header_row} does not match expected column {expected_column} for job {job.id}"
-                        )
-                        job_status = "VALIDATED_TOTAL_FAILURE"
-                        job.fatal_error_description = (
-                            f"Header row {header_row} does not match expected column {expected_column}"
-                        )
-                        return job_status
-
+def process_file_with_header(job: Job, job_file: Path | None) -> str:
+    if not job.collection_exercise.survey.sample_with_header_row:
         return "STAGING_IN_PROGRESS"
+    if job_file is None:
+        logger.error(f"File {job.file_name} does not exist for job {job.id}")
+        job_status = "VALIDATED_TOTAL_FAILURE"
+        job.fatal_error_description = f"File {job.file_name} does not exist for job {job.id}"
+        return job_status
+    logger.info(f"Job {job.id} has a header row, processing file with header")
+    with open(job_file, newline="", encoding="utf-8-sig") as file:
+        csvfile = csv.reader(file, delimiter=",")
+        header = next(csvfile)
+        expected_columns = [
+            validation_rule["columnName"] for validation_rule in job.collection_exercise.survey.sample_validation_rules
+        ]
+        print(expected_columns)
+        if len(header) != len(expected_columns):
+            logger.error(f"Header row does not match expected columns for job {job.id}")
+            job_status = "VALIDATED_TOTAL_FAILURE"
+            job.fatal_error_description = "Header row does not have expected number of columns"
+            return job_status
+        else:
+            for header_row, expected_column in zip(header, expected_columns):
+                if header_row != expected_column:
+                    logger.error(
+                        f"Header row {header_row} does not match expected column {expected_column} for job {job.id}"
+                    )
+                    job_status = "VALIDATED_TOTAL_FAILURE"
+                    job.fatal_error_description = (
+                        f"Header row {header_row} does not match expected column {expected_column}"
+                    )
+                    return job_status
+
     return "STAGING_IN_PROGRESS"
 
 
-def staging_job_rows(job, job_file, session):
+def staging_job_rows(job: Job, job_file: Path | None, session: Session) -> str:
+    if job_file is None:
+        logger.error(f"File {job.file_name} does not exist for job {job.id}")
+        job_status = "VALIDATED_TOTAL_FAILURE"
+        job.fatal_error_description = f"File {job.file_name} does not exist for job {job.id}"
+        return job_status
     with open(job_file, newline="", encoding="utf-8-sig") as file:
         csvfile = csv.reader(file, delimiter=",")
         header = next(csvfile)
@@ -127,7 +137,7 @@ def staging_job_rows(job, job_file, session):
         return job_status
 
 
-def staging_chunks(csvfile, header, job, session):
+def staging_chunks(csvfile: Any, header: list[str], job: Job, session: Session) -> str:
     job_rows = []
     i = 0
     while i < CHUNK_SIZE:
@@ -138,11 +148,15 @@ def staging_chunks(csvfile, header, job, session):
             line = None
 
         if not line and i == 0:
-            logger.error(f"Failed to process job {job.id} due to an empty chunk, this probably indicates a mismatch "
-                         "between file line count and row count")
+            logger.error(
+                f"Failed to process job {job.id} due to an empty chunk, this probably indicates a mismatch "
+                "between file line count and row count"
+            )
             job_status = "VALIDATED_TOTAL_FAILURE"
-            job.fatal_error_description = ("Failed to process job due to an empty chunk, this probably indicates a "
-                                           "mismatch between file line count and row count")
+            job.fatal_error_description = (
+                "Failed to process job due to an empty chunk, this probably indicates a "
+                "mismatch between file line count and row count"
+            )
             return job_status
 
         if len(line) != len(header):

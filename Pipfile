@@ -9,6 +9,7 @@ structlog = "*"
 psycopg2-binary = "*"
 pytz = "*"
 google-cloud-storage = "*"
+types-pytz = "*"
 
 [dev-packages]
 pylint = "*"

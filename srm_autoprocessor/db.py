@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine
 
-from config import Config
+from config import config
 
-engine = create_engine(Config.SQLALCHEMY_DATABASE_URI)
+engine = create_engine(config.SQLALCHEMY_DATABASE_URI)

@@ -15,7 +15,15 @@ class Config:
         f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
     RUN_MODE = os.getenv("RUN_MODE", "CLOUD")
-    SAMPLE_LOCATION = os.getenv("SAMPLE_LOCATION")
+    SAMPLE_LOCATION = os.getenv(
+        "SAMPLE_LOCATION", "TEST-SAMPLE-FILES"
+    )  # Change this to your desired sample files location
+
+
+def get_config() -> Config:
+    if Config.ENVIRONMENT == "DEV":
+        return DevelopmentConfig()
+    return Config()
 
 
 class DevelopmentConfig(Config):
@@ -33,11 +41,10 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = (
         f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
-    # RUN_MODE = os.getenv("RUN_MODE", "LOCAL")
-    RUN_MODE = os.getenv("RUN_MODE", "CLOUD")
-    # SAMPLE_LOCATION = os.getenv("SAMPLE_LOCATION", "./sample_files")
-    SAMPLE_LOCATION = os.getenv("SAMPLE_LOCATION", "ssdc-rm-dev-sample-file-transfer-bucket")
+    RUN_MODE = os.getenv("RUN_MODE", "LOCAL")
+    # RUN_MODE = os.getenv("RUN_MODE", "CLOUD")
+    SAMPLE_LOCATION = os.getenv("SAMPLE_LOCATION", "./sample_files")
+    # SAMPLE_LOCATION = os.getenv("SAMPLE_LOCATION", "ssdc-rm-dev-sample-file-transfer-bucket")
 
 
-if Config.ENVIRONMENT == "DEV":
-    Config = DevelopmentConfig
+config = get_config()
