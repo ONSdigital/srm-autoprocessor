@@ -40,16 +40,22 @@ def run_app():
 
                     job.job_status = job_status
                     session.commit()
+                    handle_file(job_file)
                 elif job.job_status == "STAGING_IN_PROGRESS":
                     logger.info(f"Job {job.id} is in staging, processing file")
                     job_status = staging_job_rows(job, job_file, session)
                     job.job_status = job_status
                     session.commit()
+                    handle_file(job_file)
                 elif job.job_status == "VALIDATED_OK":
                     job.job_status = "PROCESSING_IN_PROGRESS"
                     session.commit()
 
         sleep(5)
+
+def handle_file(job_file):
+    if Config.RUN_MODE == "CLOUD":
+        job_file.unlink(missing_ok=True)  # Remove the temporary file if it exists
 
 
 def get_file_path(job):
@@ -63,7 +69,7 @@ def get_file_path(job):
         temp = tempfile.NamedTemporaryFile(delete=False)
         blob.download_to_filename(temp.name)
         temp.close()
-        return temp.name
+        return Path(temp.name)
     else:
         file_path = Path(Config.SAMPLE_LOCATION) / job.file_name
         return file_path
