@@ -1,7 +1,7 @@
 import pytest
 
-from srm_autoprocessor.models.survey import Survey
 from srm_autoprocessor.models.collection_exercise import CollectionExercise
+from srm_autoprocessor.models.survey import Survey
 
 
 def test_collection_exercise_as_dict(valid_collection_exercise_dict, valid_survey_dict):

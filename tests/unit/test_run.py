@@ -2,10 +2,11 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from srm_autoprocessor.models import Job
-from srm_autoprocessor.run import get_file_path, handle_file
+from srm_autoprocessor.models import CollectionExercise, Job, Survey
+from srm_autoprocessor.run import get_file_path, handle_file, process_file_with_header
+from tests.unit.test_helpers import create_survey, create_collection_exercise, create_job
 
 
 def test_get_file_path_local():
@@ -145,3 +146,83 @@ def test_handle_path(change_run_mode_to_cloud, create_temp_file):
 
     # Then
     assert not job_file.exists()
+
+
+def test_process_file_with_header():
+    survey = create_survey("test_survey", None, header_row=True)
+    collection_exercise = create_collection_exercise("test_collex", survey)
+    job = create_job(collection_exercise, "email_driven.csv", 6, job_status="FILE_UPLOADED")
+    job_file = Path(__file__).parent.parent.joinpath("resources", job.file_name)
+
+    job_status = process_file_with_header(job, job_file)
+
+    assert job_status == "STAGING_IN_PROGRESS", "Expected job status to be STAGING_IN_PROGRESS"
+
+
+def test_process_file_with_no_sample_header():
+    survey = create_survey("test_survey", None, header_row=False)
+    collection_exercise = create_collection_exercise("test_collex", survey)
+    job = create_job(collection_exercise, "email_driven.csv", 6, job_status="FILE_UPLOADED")
+    job_file = Path(__file__).parent.parent.joinpath("resources", job.file_name)
+
+    job_status = process_file_with_header(job, job_file)
+
+    assert job_status == "STAGING_IN_PROGRESS", "Expected job status to be STAGING_IN_PROGRESS"
+
+
+def test_process_file_with_no_job_file():
+    survey = create_survey("test_survey", None, header_row=True)
+    collection_exercise = create_collection_exercise("test_collex", survey)
+    job = create_job(collection_exercise, "email_driven.csv", 6, job_status="FILE_UPLOADED")
+    job_file = None
+
+    job_status = process_file_with_header(job, job_file)
+
+    assert job_status == "VALIDATED_TOTAL_FAILURE", "Expected job status to be VALIDATED_TOTAL_FAILURE"
+    assert job.fatal_error_description == f"File {job.file_name} does not exist for job {job.id}"
+
+
+def test_process_file_with_header_row_mismatch():
+    survey_validation_rules = [
+            {
+                "columnName": "emailAddress",
+                "rules": [{"className": "uk.gov.ons.ssdc.common.validation.EmailRule", "mandatory": True}],
+                "sensitive": True,
+            },
+            {
+                "columnName": "anotherColumn",
+                "rules": [{"className": "uk.gov.ons.ssdc.common.validation.EmailRule", "mandatory": True}],
+                "sensitive": True,
+            },
+        ]
+
+    survey = create_survey("test_survey", survey_validation_rules, header_row=True)
+    collection_exercise = create_collection_exercise("test_collex", survey)
+    job = create_job(collection_exercise, "email_driven.csv", 6, job_status="FILE_UPLOADED")
+
+    job_file = Path(__file__).parent.parent.joinpath("resources", job.file_name)
+
+    job_status = process_file_with_header(job, job_file)
+
+    assert job_status == "VALIDATED_TOTAL_FAILURE", "Expected job status to be VALIDATED_TOTAL_FAILURE"
+    assert job.fatal_error_description == "Header row does not have expected number of columns"
+
+
+def test_process_file_with_header_row_mismatch_column_name():
+    survey_validation_rules = [
+            {
+                "columnName": "differentColumn",
+                "rules": [{"className": "uk.gov.ons.ssdc.common.validation.EmailRule", "mandatory": True}],
+                "sensitive": True,
+            }
+        ]
+
+    survey = create_survey("test_survey", survey_validation_rules, header_row=True)
+    collection_exercise = create_collection_exercise("test_collex", survey)
+    job = create_job(collection_exercise, "email_driven.csv", 6, job_status="FILE_UPLOADED")
+
+    job_file = Path(__file__).parent.parent.joinpath("resources", job.file_name)
+
+    job_status = process_file_with_header(job, job_file)
+
+    assert job_status == "VALIDATED_TOTAL_FAILURE", "Expected job status to be VALIDATED_TOTAL_FAILURE"
