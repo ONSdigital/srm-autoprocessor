@@ -23,6 +23,8 @@ class Config:
 def get_config() -> Config:
     if Config.ENVIRONMENT == "DEV":
         return DevelopmentConfig()
+    elif Config.ENVIRONMENT == "TEST":
+        return UnitTestConfig()
     return Config()
 
 
@@ -45,6 +47,20 @@ class DevelopmentConfig(Config):
     # RUN_MODE = os.getenv("RUN_MODE", "CLOUD")
     SAMPLE_LOCATION = os.getenv("SAMPLE_LOCATION", "./sample_files")
     # SAMPLE_LOCATION = os.getenv("SAMPLE_LOCATION", "ssdc-rm-dev-sample-file-transfer-bucket")
+
+
+class UnitTestConfig(DevelopmentConfig):
+    DEBUG = True
+
+    # DB config
+    POSTGRES_USER = "dummy"
+    POSTGRES_DB = "dummy_rm"
+    POSTGRES_HOST = "dummy"
+    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
+    POSTGRES_PORT = os.getenv("POSTGRES_PORT", "6432")
+    SQLALCHEMY_DATABASE_URI = (
+        f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    )
 
 
 config = get_config()
