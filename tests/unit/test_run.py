@@ -2,10 +2,12 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
+from sqlalchemy import delete
+from sqlalchemy.orm import Session
 
-from srm_autoprocessor.models import Job
-from srm_autoprocessor.run import get_file_path, handle_file
+from srm_autoprocessor.models import Job, JobRow
+from srm_autoprocessor.run import get_file_path, handle_file, staging_job_rows
 
 
 def test_get_file_path_local():
@@ -145,3 +147,38 @@ def test_handle_path(change_run_mode_to_cloud, create_temp_file):
 
     # Then
     assert not job_file.exists()
+
+
+def test_returns_validated_total_failure_when_file_is_none():
+    job = MagicMock(file_name="test.csv", id="123e4567-e89b-12d3-a456-426614174000")
+    session = MagicMock(spec=Session)
+    job_file = None
+    result = staging_job_rows(job, job_file, session)
+    assert result == "VALIDATED_TOTAL_FAILURE"
+    assert job.fatal_error_description == f"File {job.file_name} does not exist for job {job.id}"
+
+
+def test_processes_file_with_valid_data():
+    job = MagicMock(file_name="test.csv", id="123e4567-e89b-12d3-a456-426614174000", staging_row_number=0,
+                    file_row_count=2)
+    session = MagicMock(spec=Session)
+    job_file = Path("/tmp/test.csv")
+    with patch("builtins.open", mock_open(read_data="header1,header2\nvalue1,value2\n")):
+        result = staging_job_rows(job, job_file, session)
+    assert result == "VALIDATION_IN_PROGRESS"
+    session.add_all.assert_called_once()
+
+
+def test_deletes_job_rows_on_validation_failure():
+    job = MagicMock(file_name="test.csv", id="123e4567-e89b-12d3-a456-426614174000", staging_row_number=0,
+                    file_row_count=2)
+    session = MagicMock(spec=Session)
+    job_file = Path("/tmp/test.csv")
+    with patch("builtins.open", mock_open(read_data="header1,header2\nvalue1\n")):
+        result = staging_job_rows(job, job_file, session)
+    assert result == "VALIDATED_TOTAL_FAILURE"
+    session.execute.assert_called_once()
+    args, kwargs = session.execute.call_args
+    assert isinstance(args[0], delete(JobRow).__class__)
+    assert str(args[0]) == str(delete(JobRow).where(JobRow.job_id == job.id))
+
