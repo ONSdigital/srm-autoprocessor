@@ -18,12 +18,12 @@ class Readiness:
         self.show_unready()
 
     def show_ready(self):
-        logger.debug('Creating readiness file', readiness_file_path=str(self.readiness_file))
+        logger.debug("Creating readiness file", readiness_file_path=str(self.readiness_file))
         self.readiness_file.touch()
 
     def show_unready(self):
-        logger.debug('Removing readiness file', readiness_file_path=str(self.readiness_file))
+        logger.debug("Removing readiness file", readiness_file_path=str(self.readiness_file))
         try:
             self.readiness_file.unlink()
         except FileNotFoundError:
-            logger.debug('Readiness file not found', readiness_file_path=str(self.readiness_file))
+            logger.debug("Readiness file not found", readiness_file_path=str(self.readiness_file))
