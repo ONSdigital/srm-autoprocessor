@@ -52,3 +52,6 @@ megalint:  ## Run the mega-linter.
 .PHONY: docker-build
 docker-build:  ## Build the Docker image
 	docker build -t europe-west2-docker.pkg.dev/ssdc-rm-ci/docker/srm-autoprocessor .
+
+unit-test:  ## Run the tests and check coverage.
+	ENVIRONMENT=TEST pipenv run pytest tests/unit --cov=srm_autoprocessor --cov-report term-missing --cov-fail-under=90

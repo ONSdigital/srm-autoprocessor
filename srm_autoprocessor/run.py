@@ -68,7 +68,7 @@ def get_file_path(job: Job) -> Path | None:
         if not blob.exists():
             logger.error(f"File {job.file_name} does not exist in bucket {config.SAMPLE_LOCATION}")
             return None
-        with tempfile.NamedTemporaryFile(delete=False) as temp:
+        with tempfile.NamedTemporaryFile(delete=config.DELETE_TEMP_FILE) as temp:
             blob.download_to_filename(temp.name)
         return Path(temp.name)
     else:

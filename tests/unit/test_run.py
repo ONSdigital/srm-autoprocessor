@@ -1,0 +1,147 @@
+import logging
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from unittest.mock import patch, MagicMock
+
+from srm_autoprocessor.models import Job
+from srm_autoprocessor.run import get_file_path, handle_file
+
+
+def test_get_file_path_local():
+    # Given
+
+    job = Job(
+        id=uuid.uuid4(),
+        collection_exercise_id=uuid.uuid4(),
+        created_at=datetime.now(timezone.utc),
+        last_updated_at=datetime.now(timezone.utc),
+        file_name="test_sample.csv",
+        file_id=uuid.uuid4(),
+        file_row_count=100,
+        error_row_count=0,
+        staging_row_number=0,
+        validating_row_number=0,
+        processing_row_number=0,
+        job_status="FILE_UPLOADED",
+        job_type="SAMPLE",
+    )
+
+    # When
+    file_path = get_file_path(job)
+
+    # Then
+
+    assert file_path.name == job.file_name
+
+
+def test_get_file_path_local_file_does_not_exist(caplog):
+    # Given
+
+    job = Job(
+        id=uuid.uuid4(),
+        collection_exercise_id=uuid.uuid4(),
+        created_at=datetime.now(timezone.utc),
+        last_updated_at=datetime.now(timezone.utc),
+        file_name="file_not_available.csv",
+        file_id=uuid.uuid4(),
+        file_row_count=100,
+        error_row_count=0,
+        staging_row_number=0,
+        validating_row_number=0,
+        processing_row_number=0,
+        job_status="FILE_UPLOADED",
+        job_type="SAMPLE",
+    )
+
+    # When
+    with caplog.at_level(logging.ERROR):
+        file_path = get_file_path(job)
+
+    # Then
+    assert file_path is None, "Expected None when file does not exist"
+    assert f"File {job.file_name} does not exist at path" in caplog.text
+
+
+def test_get_file_path_cloud(change_run_mode_to_cloud):
+    # Given
+
+    job = Job(
+        id=uuid.uuid4(),
+        collection_exercise_id=uuid.uuid4(),
+        created_at=datetime.now(timezone.utc),
+        last_updated_at=datetime.now(timezone.utc),
+        file_name="test_sample.csv",
+        file_id=uuid.uuid4(),
+        file_row_count=100,
+        error_row_count=0,
+        staging_row_number=0,
+        validating_row_number=0,
+        processing_row_number=0,
+        job_status="FILE_UPLOADED",
+        job_type="SAMPLE",
+    )
+    with patch("srm_autoprocessor.run.storage.Client") as mock_client:
+        mock_bucket = MagicMock()
+        mock_blob = MagicMock()
+
+        mock_blob.exists.return_value = True
+        mock_bucket.blob.return_value = mock_blob
+        mock_client.return_value.bucket.return_value = mock_bucket
+        # When
+        file_path = get_file_path(job)
+
+    # Then
+    mock_client.assert_called_once()
+    mock_client.return_value.bucket.assert_called_with("test-bucket")
+    mock_bucket.blob.assert_called_with(job.file_name)
+    mock_blob.exists.assert_called_once()
+    mock_blob.download_to_filename.assert_called_once()
+    assert isinstance(file_path, Path)
+
+
+def test_get_file_path_cloud_file_not_exist(change_run_mode_to_cloud, caplog):
+    # Given
+
+    job = Job(
+        id=uuid.uuid4(),
+        collection_exercise_id=uuid.uuid4(),
+        created_at=datetime.now(timezone.utc),
+        last_updated_at=datetime.now(timezone.utc),
+        file_name="file_not_available.csv",
+        file_id=uuid.uuid4(),
+        file_row_count=100,
+        error_row_count=0,
+        staging_row_number=0,
+        validating_row_number=0,
+        processing_row_number=0,
+        job_status="FILE_UPLOADED",
+        job_type="SAMPLE",
+    )
+    with caplog.at_level(logging.ERROR), patch("srm_autoprocessor.run.storage.Client") as mock_client:
+        mock_bucket = MagicMock()
+        mock_blob = MagicMock()
+
+        mock_blob.exists.return_value = False
+        mock_bucket.blob.return_value = mock_blob
+        mock_client.return_value.bucket.return_value = mock_bucket
+        # When
+        file_path = get_file_path(job)
+
+    # Then
+    mock_client.assert_called_once()
+    mock_client.return_value.bucket.assert_called_with("test-bucket")
+    mock_bucket.blob.assert_called_with(job.file_name)
+    mock_blob.exists.assert_called_once()
+    assert file_path is None, "Expected None when file does not exist"
+    assert f"File {job.file_name} does not exist in bucket " in caplog.text
+
+
+def test_handle_path(change_run_mode_to_cloud, create_temp_file):
+    # Given
+    job_file = create_temp_file
+
+    handle_file(job_file)
+
+    # Then
+    assert not job_file.exists()

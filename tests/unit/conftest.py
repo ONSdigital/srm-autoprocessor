@@ -1,9 +1,12 @@
 import os
 import uuid
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 import pytz
+
+from config import config
 
 
 @pytest.fixture
@@ -93,3 +96,18 @@ def updated_survey_dict():
         "sample_with_header_row": True,
         "metadata": None,
     }
+
+
+@pytest.fixture
+def change_run_mode_to_cloud():
+    config.RUN_MODE = "CLOUD"
+    config.SAMPLE_LOCATION = "test-bucket"
+
+
+@pytest.fixture()
+def create_temp_file():
+    file_path = Path(__file__).parent.joinpath("test_file.csv")
+    with open(file_path, "w") as job_file:
+        job_file.write("header1,header2\nvalue1,value2\n")
+    yield file_path
+    file_path.unlink(missing_ok=True)

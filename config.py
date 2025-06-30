@@ -21,6 +21,7 @@ class Config:
     )  # Change this to your desired sample files location
 
     READINESS_FILE_PATH = Path(os.getenv('READINESS_FILE_PATH', 'autoprocessor-ready'))
+    DELETE_TEMP_FILE = os.getenv("DELETE_TEMP_FILE", False)
 
 
 
@@ -65,6 +66,9 @@ class UnitTestConfig(DevelopmentConfig):
     SQLALCHEMY_DATABASE_URI = (
         f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
+    SAMPLE_LOCATION = os.getenv("SAMPLE_LOCATION", str(Path(__file__).parent.joinpath("tests/resources")))
+    DELETE_TEMP_FILE = os.getenv("DELETE_TEMP_FILE", True)
+
 
 
 config = get_config()
