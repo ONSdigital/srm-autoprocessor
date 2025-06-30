@@ -5,6 +5,9 @@ from datetime import datetime
 import pytest
 import pytz
 
+from srm_autoprocessor.models.collection_exercise import CollectionExercise
+from srm_autoprocessor.models.survey import Survey
+
 
 @pytest.fixture
 def valid_action_rule_dict():
@@ -93,3 +96,58 @@ def updated_survey_dict():
         "sample_with_header_row": True,
         "metadata": None,
     }
+
+
+@pytest.fixture
+def valid_collection_exercise_dict():
+    return {
+        "name": "example_1",
+        "collection_instrument_selection_rules": ["rules"],
+        "reference": "foo",
+        "start_date": datetime.now().astimezone(pytz.UTC),
+        "end_date": datetime.now().astimezone(pytz.UTC),
+        "survey_id": "1c8f8bc8-7407-4f3e-9e39-d7ec067d10b2",
+        "collection_exercise_metadata": None,
+    }
+
+
+@pytest.fixture
+def valid_create_collection_exercise_json():
+    return {
+        "name": "example_1",
+        "collection_instrument_selection_rules": ["rules"],
+        "reference": "foo",
+        "start_date": "2021-01-01T00:00:00+00:00",
+        "end_date": "2021-01-02T23:59:59+00:00",
+        "survey_id": "1c8f8bc8-7407-4f3e-9e39-d7ec067d10b2",
+        "metadata": None,
+    }
+
+
+@pytest.fixture
+def create_collection_exercise_dict():
+    return {
+        "name": "example_2",
+        "collection_instrument_selection_rules": ["rules"],
+        "reference": "foo",
+        "start_date": "2021-01-01T00:00:00Z",
+        "end_date": "2021-01-02T23:59:59Z",
+        "metadata": None,
+    }
+
+
+@pytest.fixture
+def collection_exercise_object(valid_survey_dict):
+    collection_exercise_id = uuid.uuid4()
+    survey_id = uuid.uuid4()
+    collection_exercise = CollectionExercise(
+        id=collection_exercise_id,
+        name="example_1",
+        reference="foo",
+        start_date=datetime(2025, 1, 1, 0, 0, 0),
+        end_date=datetime(2025, 1, 2, 23, 59, 59),
+        survey_id=survey_id,
+        collection_exercise_metadata=None,
+        survey=Survey.from_dict(valid_survey_dict),
+    )
+    return collection_exercise
