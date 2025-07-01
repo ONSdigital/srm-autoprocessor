@@ -1,3 +1,4 @@
+import csv
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -10,7 +11,7 @@ from unittest.mock import MagicMock, patch
 from srm_autoprocessor.models import Job, JobRow
 from srm_autoprocessor.run import get_file_path, handle_file, staging_job_rows
 from srm_autoprocessor.models import CollectionExercise, Job, Survey
-from srm_autoprocessor.run import get_file_path, handle_file, process_file_with_header
+from srm_autoprocessor.run import get_file_path, handle_file, process_file_with_header, staging_chunks
 from tests.unit.test_helpers import create_survey, create_collection_exercise, create_job
 
 
@@ -224,17 +225,17 @@ def test_process_file_with_no_job_file():
 
 def test_process_file_with_header_row_mismatch():
     survey_validation_rules = [
-            {
-                "columnName": "emailAddress",
-                "rules": [{"className": "uk.gov.ons.ssdc.common.validation.EmailRule", "mandatory": True}],
-                "sensitive": True,
-            },
-            {
-                "columnName": "anotherColumn",
-                "rules": [{"className": "uk.gov.ons.ssdc.common.validation.EmailRule", "mandatory": True}],
-                "sensitive": True,
-            },
-        ]
+        {
+            "columnName": "emailAddress",
+            "rules": [{"className": "uk.gov.ons.ssdc.common.validation.EmailRule", "mandatory": True}],
+            "sensitive": True,
+        },
+        {
+            "columnName": "anotherColumn",
+            "rules": [{"className": "uk.gov.ons.ssdc.common.validation.EmailRule", "mandatory": True}],
+            "sensitive": True,
+        },
+    ]
 
     survey = create_survey("test_survey", survey_validation_rules, header_row=True)
     collection_exercise = create_collection_exercise("test_collex", survey)
@@ -250,12 +251,12 @@ def test_process_file_with_header_row_mismatch():
 
 def test_process_file_with_header_row_mismatch_column_name():
     survey_validation_rules = [
-            {
-                "columnName": "differentColumn",
-                "rules": [{"className": "uk.gov.ons.ssdc.common.validation.EmailRule", "mandatory": True}],
-                "sensitive": True,
-            }
-        ]
+        {
+            "columnName": "differentColumn",
+            "rules": [{"className": "uk.gov.ons.ssdc.common.validation.EmailRule", "mandatory": True}],
+            "sensitive": True,
+        }
+    ]
 
     survey = create_survey("test_survey", survey_validation_rules, header_row=True)
     collection_exercise = create_collection_exercise("test_collex", survey)
@@ -266,3 +267,65 @@ def test_process_file_with_header_row_mismatch_column_name():
     job_status = process_file_with_header(job, job_file)
 
     assert job_status == "VALIDATED_TOTAL_FAILURE", "Expected job status to be VALIDATED_TOTAL_FAILURE"
+
+
+def test_staging_chunks():
+    # Given
+
+    job_file = Path(__file__).parent.parent.joinpath("resources", "email_driven.csv")
+    header = ["emailAddress"]
+    job = create_job(create_collection_exercise("test_collex", create_survey("test_survey", None)), "email_driven.csv",
+                     6, job_status="STAGING_IN_PROGRESS")
+    session = MagicMock()  # Mock session for database operations
+    with open(job_file, "r", encoding="utf-8-sig") as file:
+        csvfile = csv.reader(file, delimiter=",")
+        next(csvfile)  # Skip header row
+
+        # When
+        job_status = staging_chunks(csvfile, header, job, session)
+
+    # Then
+    assert job_status == "VALIDATION_IN_PROGRESS"
+    assert session.add_all.call_count == 1, "Expected session.add_all to be called at least once"
+    assert session.commit.call_count == 1, "Expected session.commit to be called at least once"
+    assert len(session.add_all.call_args.args[0]) == 5, "Expected 5 job rows to be added to the session"
+
+
+def test_staging_chunks_with_row_error():
+    # Given
+
+    job_file = Path(__file__).parent.parent.joinpath("resources", "email_driven_incorrect_line_length.csv")
+    header = ["emailAddress"]
+    job = create_job(create_collection_exercise("test_collex", create_survey("test_survey", None)), "email_driven_incorrect_line_length.csv", 6, job_status="STAGING_IN_PROGRESS")
+    session = MagicMock()  # Mock session for database operations
+    with open(job_file, "r", encoding="utf-8-sig") as file:
+        csvfile = csv.reader(file, delimiter=",")
+        next(csvfile)  # Skip header row
+
+    # When
+        job_status = staging_chunks(csvfile, header, job, session)
+
+    # Then
+    assert job_status == "VALIDATED_TOTAL_FAILURE"
+    assert session.add_all.call_count == 0, "Expected no rows to be added to the session due to error"
+
+
+def test_staging_chunks_with_line_error():
+    # Given
+
+    job_file = Path(__file__).parent.parent.joinpath("resources", "email_driven_empty_chunk.csv")
+    header = ["emailAddress"]
+    job = create_job(create_collection_exercise("test_collex", create_survey("test_survey", None)),
+                     "email_driven_empty_chunk.csv", 6, job_status="STAGING_IN_PROGRESS")
+    session = MagicMock()  # Mock session for database operations
+    with open(job_file, "r", encoding="utf-8-sig") as file:
+        csvfile = csv.reader(file, delimiter=",")
+        next(csvfile)  # Skip header row
+        # When
+        job_status = staging_chunks(csvfile, header, job, session)
+
+    # Then
+    assert job_status == "VALIDATED_TOTAL_FAILURE"
+    assert session.add_all.call_count == 0, "Expected no rows to be added to the session due to error"
+    assert job.fatal_error_description == ("Failed to process job due to an empty chunk, this probably indicates a "
+                                           "mismatch between file line count and row count")
