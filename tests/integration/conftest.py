@@ -15,19 +15,19 @@ MAX_APP_READINESS_ATTEMPTS = 100
 
 @pytest.fixture
 def run_test_app():
-    logger.info('TEST SETUP: Initialising and cleaning directories and database')
+    logger.info("TEST SETUP: Initialising and cleaning directories and database")
 
     test_app = Process(target=run)
 
-    logger.info('TEST SETUP: Starting test app in sub process')
+    logger.info("TEST SETUP: Starting test app in sub process")
     test_app.start()
 
     try:
-        logger.info('TEST SETUP: Waiting for test app to show ready')
+        logger.info("TEST SETUP: Waiting for test app to show ready")
         wait_for_readiness()
-        logger.info('TEST SETUP: Test app is ready')
+        logger.info("TEST SETUP: Test app is ready")
     except Exception:
-        logger.error('TEST ERROR: Test app failed to start up in time')
+        logger.error("TEST ERROR: Test app failed to start up in time")
         terminate_test_app(test_app)
         raise
 
@@ -35,13 +35,12 @@ def run_test_app():
 
     terminate_test_app(test_app)
 
-    logger.info('TEST CLEAR DOWN: Clearing down directories and database')
+    logger.info("TEST CLEAR DOWN: Clearing down directories and database")
     clear_db()
 
 
-
 def terminate_test_app(test_app: Process):
-    logger.info('TEST CLEAR DOWN: Terminating test app')
+    logger.info("TEST CLEAR DOWN: Terminating test app")
     test_app.terminate()
 
     # Give the app up to 10 seconds to terminate gracefully
@@ -51,10 +50,11 @@ def terminate_test_app(test_app: Process):
     test_app.kill()
     test_app.close()
 
+
 def wait_for_readiness():
     for _ in range(MAX_APP_READINESS_ATTEMPTS):
         if config.READINESS_FILE_PATH.exists():
             break
         sleep(0.1)
     else:
-        raise RuntimeError('Ran out of attempts waiting for test app to start')
+        raise RuntimeError("Ran out of attempts waiting for test app to start")
