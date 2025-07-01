@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-POSTGRES_CONTAINER=postgres-support-api-its
+POSTGRES_CONTAINER=postgres-autoprocessor-its
 echo "Waiting for [$POSTGRES_CONTAINER] to be ready"
 
 while true; do
