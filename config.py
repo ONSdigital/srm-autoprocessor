@@ -29,6 +29,8 @@ def get_config() -> Config:
         return DevelopmentConfig()
     elif Config.ENVIRONMENT == "TEST":
         return UnitTestConfig()
+    elif Config.ENVIRONMENT == "INTEGRATION_TESTS":
+        return IntegrationTestConfig()
     return Config()
 
 
@@ -67,6 +69,18 @@ class UnitTestConfig(DevelopmentConfig):
     )
     SAMPLE_LOCATION = os.getenv("SAMPLE_LOCATION", str(Path(__file__).parent.joinpath("tests/resources")))
     DELETE_TEMP_FILE = os.getenv("DELETE_TEMP_FILE", True)
+
+
+class IntegrationTestConfig(DevelopmentConfig):
+    DEBUG = True
+    POSTGRES_PORT = os.getenv("POSTGRES_PORT", "16432")
+    POSTGRES_USER = os.getenv("POSTGRES_USER", "appuser")
+    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
+    POSTGRES_DB = os.getenv("POSTGRES_DB", "rm")
+    POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
+    SQLALCHEMY_DATABASE_URI = (
+        f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    )
 
 
 config = get_config()
