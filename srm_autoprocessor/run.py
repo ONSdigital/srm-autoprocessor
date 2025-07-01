@@ -55,6 +55,7 @@ def process_job():
                 session.commit()
                 handle_file(job_file)
             elif job.job_status == "VALIDATED_OK":
+                #TODO Should we check the file here so we don't autoprocess every job?
                 job.job_status = "PROCESSING_IN_PROGRESS"
                 session.commit()
 
