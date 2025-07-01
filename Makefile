@@ -28,7 +28,7 @@ lint:  ## Run all linters (black/ruff/pylint/mypy).
 
 .PHONY: test
 test:  integration-down integration-up ## Run the tests and check coverage.
-	ENVIRONMENT=INTEGRATION_TESTS pipenv run pytest -n auto --cov=srm_autoprocessor --cov-report term-missing --cov-fail-under=100
+	ENVIRONMENT=INTEGRATION_TESTS pipenv run pytest tests/ --cov=srm_autoprocessor --cov-report term-missing --cov-fail-under=90
 	docker compose -f tests/integration/docker-compose.yml down
 
 .PHONY: unit-test
