@@ -73,6 +73,29 @@ def valid_survey_dict():
         "metadata": None,
     }
 
+@pytest.fixture
+def valid_collection_exercise_dict():
+    return {
+        "name": "example_1",
+        "collection_instrument_selection_rules": ["rules"],
+        "reference": "foo",
+        "start_date": datetime.now().astimezone(pytz.UTC),
+        "end_date": datetime.now().astimezone(pytz.UTC),
+        "survey_id": "1c8f8bc8-7407-4f3e-9e39-d7ec067d10b2",
+        "collection_exercise_metadata": None,
+    }
+
+@pytest.fixture
+def valid_create_collection_exercise_json():
+    return {
+        "name": "example_1",
+        "collection_instrument_selection_rules": ["rules"],
+        "reference": "foo",
+        "start_date": "2021-01-01T00:00:00+00:00",
+        "end_date": "2021-01-02T23:59:59+00:00",
+        "survey_id": "1c8f8bc8-7407-4f3e-9e39-d7ec067d10b2",
+        "metadata": None,
+    }
 
 @pytest.fixture
 def survey_dict_missing_mandatory_field():
