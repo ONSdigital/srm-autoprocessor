@@ -5,7 +5,9 @@ from uuid import UUID
 from sqlalchemy import text
 
 from srm_autoprocessor.db import engine as db
+from srm_autoprocessor.models.collection_exercise import CollectionExercise
 from srm_autoprocessor.models.job import Job
+from srm_autoprocessor.models.survey import Survey
 
 
 def clear_db():
@@ -16,6 +18,43 @@ def clear_db():
     db.session.execute(text("TRUNCATE casev3.email_template CASCADE;"))
     db.session.execute(text("TRUNCATE casev3.action_rule_survey_email_template;"))
     db.session.commit()
+
+
+def set_up_survey(survey_id: UUID, name: str, metadata: dict) -> Survey:
+    """Helper function for saving a survey to the database.
+    This must be called from within an active app context.
+    """
+    survey = Survey(
+        id=survey_id,
+        name=name,
+        survey_metadata=metadata,
+        sample_separator=",",
+        sample_validation_rules=[],
+        sample_with_header_row=True,
+        sample_definition_url="foo://bar",
+    )
+    db.session.add(survey)
+    db.session.commit()
+    return survey
+
+
+def set_up_collection_exercise(collection_exercise_id: UUID, survey_id: UUID) -> CollectionExercise:
+    """Helper function for saving a collection exercise to the database.
+    This must be called from within an active app context.
+    """
+    collection_exercise = CollectionExercise(
+        id=collection_exercise_id,
+        survey_id=survey_id,
+        name="example_1",
+        collection_instrument_selection_rules=["rules"],
+        reference="test",
+        start_date="2025-01-01",
+        end_date="2045-01-01",
+        collection_exercise_metadata={"metadata": "example"},
+    )
+    db.session.add(collection_exercise)
+    db.session.commit()
+    return collection_exercise
 
 
 def set_up_job(collection_exercise_id: UUID, file_name: str, file_row_count: int) -> Job:
