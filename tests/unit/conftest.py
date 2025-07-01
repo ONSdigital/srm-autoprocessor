@@ -1,12 +1,11 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 import pytz
 
 from config import config
-from srm_autoprocessor.models import CollectionExercise, Job, Survey
 
 
 @pytest.fixture
@@ -73,6 +72,7 @@ def valid_survey_dict():
         "metadata": None,
     }
 
+
 @pytest.fixture
 def valid_collection_exercise_dict():
     return {
@@ -85,6 +85,7 @@ def valid_collection_exercise_dict():
         "collection_exercise_metadata": None,
     }
 
+
 @pytest.fixture
 def valid_create_collection_exercise_json():
     return {
@@ -96,6 +97,7 @@ def valid_create_collection_exercise_json():
         "survey_id": "1c8f8bc8-7407-4f3e-9e39-d7ec067d10b2",
         "metadata": None,
     }
+
 
 @pytest.fixture
 def survey_dict_missing_mandatory_field():

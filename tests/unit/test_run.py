@@ -1,18 +1,24 @@
 import csv
 import logging
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import MagicMock, mock_open, patch
+
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
-from unittest.mock import MagicMock, patch
 
 from srm_autoprocessor.models import Job, JobRow
-from srm_autoprocessor.run import get_file_path, handle_file, staging_job_rows, process_job
-from srm_autoprocessor.models import CollectionExercise, Job, Survey
-from srm_autoprocessor.run import get_file_path, handle_file, process_file_with_header, staging_chunks
-from tests.unit.test_helpers import create_survey, create_collection_exercise, create_job
+from srm_autoprocessor.run import (
+    get_file_path,
+    handle_file,
+    process_file_with_header,
+    process_job,
+    staging_chunks,
+    staging_job_rows,
+)
+from tests.unit.test_helpers import create_collection_exercise, create_job, create_survey
 
 
 def test_get_file_path_local():
@@ -164,22 +170,28 @@ def test_returns_validated_total_failure_when_file_is_none():
 
 
 def test_processes_file_with_valid_data():
-    job = MagicMock(file_name="test.csv", id="123e4567-e89b-12d3-a456-426614174000", staging_row_number=0,
-                    file_row_count=2)
+    job = MagicMock(
+        file_name="test.csv", id="123e4567-e89b-12d3-a456-426614174000", staging_row_number=0, file_row_count=2
+    )
     session = MagicMock(spec=Session)
-    job_file = Path("/tmp/test.csv")
-    with patch("builtins.open", mock_open(read_data="header1,header2\nvalue1,value2\n")):
+    with tempfile.NamedTemporaryFile() as temp_file, patch(
+        "builtins.open", mock_open(read_data="header1,header2\nvalue1,value2\n")
+    ):
+        job_file = Path(temp_file.name)
         result = staging_job_rows(job, job_file, session)
     assert result == "VALIDATION_IN_PROGRESS"
     session.add_all.assert_called_once()
 
 
 def test_deletes_job_rows_on_validation_failure():
-    job = MagicMock(file_name="test.csv", id="123e4567-e89b-12d3-a456-426614174000", staging_row_number=0,
-                    file_row_count=2)
+    job = MagicMock(
+        file_name="test.csv", id="123e4567-e89b-12d3-a456-426614174000", staging_row_number=0, file_row_count=2
+    )
     session = MagicMock(spec=Session)
-    job_file = Path("/tmp/test.csv")
-    with patch("builtins.open", mock_open(read_data="header1,header2\nvalue1\n")):
+    with tempfile.NamedTemporaryFile() as temp_file, patch(
+        "builtins.open", mock_open(read_data="header1,header2\nvalue1\n")
+    ):
+        job_file = Path(temp_file.name)
         result = staging_job_rows(job, job_file, session)
     assert result == "VALIDATED_TOTAL_FAILURE"
     session.execute.assert_called_once()
@@ -273,10 +285,14 @@ def test_staging_chunks():
 
     job_file = Path(__file__).parent.parent.joinpath("resources", "email_driven.csv")
     header = ["emailAddress"]
-    job = create_job(create_collection_exercise("test_collex", create_survey("test_survey", None)), "email_driven.csv",
-                     6, job_status="STAGING_IN_PROGRESS")
+    job = create_job(
+        create_collection_exercise("test_collex", create_survey("test_survey", None)),
+        "email_driven.csv",
+        6,
+        job_status="STAGING_IN_PROGRESS",
+    )
     session = MagicMock()  # Mock session for database operations
-    with open(job_file, "r", encoding="utf-8-sig") as file:
+    with open(job_file, encoding="utf-8-sig") as file:
         csvfile = csv.reader(file, delimiter=",")
         next(csvfile)  # Skip header row
 
@@ -287,7 +303,9 @@ def test_staging_chunks():
     assert job_status == "VALIDATION_IN_PROGRESS"
     assert session.add_all.call_count == 1, "Expected session.add_all to be called at least once"
     assert session.commit.call_count == 1, "Expected session.commit to be called at least once"
-    assert len(session.add_all.call_args.args[0]) == 5, "Expected 5 job rows to be added to the session"
+    assert (
+        len(session.add_all.call_args.args[0]) == job.staging_row_number
+    ), "Expected 5 job rows to be added to the session"
 
 
 def test_staging_chunks_with_row_error():
@@ -295,10 +313,14 @@ def test_staging_chunks_with_row_error():
 
     job_file = Path(__file__).parent.parent.joinpath("resources", "email_driven_incorrect_line_length.csv")
     header = ["emailAddress"]
-    job = create_job(create_collection_exercise("test_collex", create_survey("test_survey", None)),
-                     "email_driven_incorrect_line_length.csv", 6, job_status="STAGING_IN_PROGRESS")
+    job = create_job(
+        create_collection_exercise("test_collex", create_survey("test_survey", None)),
+        "email_driven_incorrect_line_length.csv",
+        6,
+        job_status="STAGING_IN_PROGRESS",
+    )
     session = MagicMock()  # Mock session for database operations
-    with open(job_file, "r", encoding="utf-8-sig") as file:
+    with open(job_file, encoding="utf-8-sig") as file:
         csvfile = csv.reader(file, delimiter=",")
         next(csvfile)  # Skip header row
 
@@ -315,10 +337,14 @@ def test_staging_chunks_with_line_error():
 
     job_file = Path(__file__).parent.parent.joinpath("resources", "email_driven_empty_chunk.csv")
     header = ["emailAddress"]
-    job = create_job(create_collection_exercise("test_collex", create_survey("test_survey", None)),
-                     "email_driven_empty_chunk.csv", 6, job_status="STAGING_IN_PROGRESS")
+    job = create_job(
+        create_collection_exercise("test_collex", create_survey("test_survey", None)),
+        "email_driven_empty_chunk.csv",
+        6,
+        job_status="STAGING_IN_PROGRESS",
+    )
     session = MagicMock()  # Mock session for database operations
-    with open(job_file, "r", encoding="utf-8-sig") as file:
+    with open(job_file, encoding="utf-8-sig") as file:
         csvfile = csv.reader(file, delimiter=",")
         next(csvfile)  # Skip header row
         # When
@@ -327,21 +353,27 @@ def test_staging_chunks_with_line_error():
     # Then
     assert job_status == "VALIDATED_TOTAL_FAILURE"
     assert session.add_all.call_count == 0, "Expected no rows to be added to the session due to error"
-    assert job.fatal_error_description == ("Failed to process job due to an empty chunk, this probably indicates a "
-                                           "mismatch between file line count and row count")
+    assert job.fatal_error_description == (
+        "Failed to process job due to an empty chunk, this probably indicates a "
+        "mismatch between file line count and row count"
+    )
 
 
 def test_process_job_file_uploaded():
     # Given
-    job = create_job(create_collection_exercise("test_collex", create_survey("test_survey", None)), "email_driven.csv",
-                     6, job_status="FILE_UPLOADED")
+    job = create_job(
+        create_collection_exercise("test_collex", create_survey("test_survey", None)),
+        "email_driven.csv",
+        6,
+        job_status="FILE_UPLOADED",
+    )
     job_file = Path(__file__).parent.parent.joinpath("resources", job.file_name)
 
-    with patch("srm_autoprocessor.run.get_file_path", return_value=job_file), \
-        patch("srm_autoprocessor.run.handle_file") as mock_handle_file, \
-        patch("srm_autoprocessor.run.Session") as mock_session, \
-        patch("srm_autoprocessor.run.process_file_with_header",
-              return_value="STAGING_IN_PROGRESS") as mock_process_file_with_header:
+    with patch("srm_autoprocessor.run.get_file_path", return_value=job_file), patch(
+        "srm_autoprocessor.run.handle_file"
+    ) as mock_handle_file, patch("srm_autoprocessor.run.Session") as mock_session, patch(
+        "srm_autoprocessor.run.process_file_with_header", return_value="STAGING_IN_PROGRESS"
+    ) as mock_process_file_with_header:
         mock_instance = mock_session.return_value.__enter__.return_value
         mock_instance.execute.return_value.scalars.return_value.all.return_value = [job]
         # When
@@ -356,13 +388,17 @@ def test_process_job_file_uploaded():
 
 def test_process_job_no_file(caplog):
     # Given
-    job = create_job(create_collection_exercise("test_collex", create_survey("test_survey", None)), "email_driven.csv",
-                     6, job_status="FILE_UPLOADED")
+    job = create_job(
+        create_collection_exercise("test_collex", create_survey("test_survey", None)),
+        "email_driven.csv",
+        6,
+        job_status="FILE_UPLOADED",
+    )
     job_file = None
 
-    with patch("srm_autoprocessor.run.get_file_path", return_value=job_file), \
-        patch("srm_autoprocessor.run.Session") as mock_session, \
-        caplog.at_level(logging.ERROR):
+    with patch("srm_autoprocessor.run.get_file_path", return_value=job_file), patch(
+        "srm_autoprocessor.run.Session"
+    ) as mock_session, caplog.at_level(logging.ERROR):
         mock_instance = mock_session.return_value.__enter__.return_value
         mock_instance.execute.return_value.scalars.return_value.all.return_value = [job]
         # When
@@ -372,17 +408,22 @@ def test_process_job_no_file(caplog):
     assert job.job_status == "FILE_UPLOADED", "Expected job status to be FILE_UPLOADED"
     assert f"File {job.file_name} does not exist for job {job.id}" in caplog.text
 
+
 def test_process_job_staging_in_progress():
     # Given
-    job = create_job(create_collection_exercise("test_collex", create_survey("test_survey", None)), "email_driven.csv",
-                     6, job_status="STAGING_IN_PROGRESS")
+    job = create_job(
+        create_collection_exercise("test_collex", create_survey("test_survey", None)),
+        "email_driven.csv",
+        6,
+        job_status="STAGING_IN_PROGRESS",
+    )
     job_file = Path(__file__).parent.parent.joinpath("resources", job.file_name)
 
-    with patch("srm_autoprocessor.run.get_file_path", return_value=job_file), \
-        patch("srm_autoprocessor.run.handle_file") as mock_handle_file, \
-        patch("srm_autoprocessor.run.Session") as mock_session, \
-        patch("srm_autoprocessor.run.staging_job_rows",
-              return_value="VALIDATION_IN_PROGRESS") as mock_staging_job_rows:
+    with patch("srm_autoprocessor.run.get_file_path", return_value=job_file), patch(
+        "srm_autoprocessor.run.handle_file"
+    ) as mock_handle_file, patch("srm_autoprocessor.run.Session") as mock_session, patch(
+        "srm_autoprocessor.run.staging_job_rows", return_value="VALIDATION_IN_PROGRESS"
+    ) as mock_staging_job_rows:
         mock_instance = mock_session.return_value.__enter__.return_value
         mock_instance.execute.return_value.scalars.return_value.all.return_value = [job]
         # When
@@ -394,10 +435,15 @@ def test_process_job_staging_in_progress():
     mock_handle_file.assert_called_once_with(job_file)
     mock_staging_job_rows.assert_called_once_with(job, job_file, mock_instance)
 
+
 def test_process_job_validation_ok():
     # Given
-    job = create_job(create_collection_exercise("test_collex", create_survey("test_survey", None)), "email_driven.csv",
-                     6, job_status="VALIDATED_OK")
+    job = create_job(
+        create_collection_exercise("test_collex", create_survey("test_survey", None)),
+        "email_driven.csv",
+        6,
+        job_status="VALIDATED_OK",
+    )
 
     with patch("srm_autoprocessor.run.Session") as mock_session:
         mock_instance = mock_session.return_value.__enter__.return_value

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from srm_autoprocessor.models import Survey, CollectionExercise, Job
+from srm_autoprocessor.models import CollectionExercise, Job, Survey
 
 
 def create_survey(survey_name, sample_validation_rules, header_row=True):
@@ -23,6 +23,7 @@ def create_survey(survey_name, sample_validation_rules, header_row=True):
     )
     return survey
 
+
 def create_collection_exercise(collection_exercise_name, survey):
     collection_exercise = CollectionExercise(
         id=uuid.uuid4(),
@@ -34,6 +35,7 @@ def create_collection_exercise(collection_exercise_name, survey):
         survey=survey,
     )
     return collection_exercise
+
 
 def create_job(collection_exercise, file_name, file_row_count, job_status="FILE_UPLOADED"):
     job = Job(
@@ -53,4 +55,3 @@ def create_job(collection_exercise, file_name, file_row_count, job_status="FILE_
         collection_exercise=collection_exercise,
     )
     return job
-
