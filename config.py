@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+from srm_autoprocessor.common.strtobool import strtobool
+
 
 class Config:
     LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
@@ -21,7 +23,7 @@ class Config:
     )  # Change this to your desired sample files location
 
     READINESS_FILE_PATH = Path(os.getenv("READINESS_FILE_PATH", "autoprocessor-ready"))
-    DELETE_TEMP_FILE = os.getenv("DELETE_TEMP_FILE", False)
+    DELETE_TEMP_FILE = strtobool(os.getenv("DELETE_TEMP_FILE", "False"))
 
 
 def get_config() -> Config:
@@ -68,7 +70,7 @@ class UnitTestConfig(DevelopmentConfig):
         f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
     SAMPLE_LOCATION = os.getenv("SAMPLE_LOCATION", str(Path(__file__).parent.joinpath("tests/resources")))
-    DELETE_TEMP_FILE = os.getenv("DELETE_TEMP_FILE", True)
+    DELETE_TEMP_FILE = strtobool(os.getenv("DELETE_TEMP_FILE", "True"))
 
 
 class IntegrationTestConfig(DevelopmentConfig):

@@ -30,7 +30,7 @@ def run_app() -> None:
         sleep(5)
 
 
-def process_job():
+def process_job() -> None:
     with Session(engine) as session:
         stmt = select(Job).where(Job.job_status.in_(["FILE_UPLOADED", "STAGING_IN_PROGRESS", "VALIDATED_OK"]))
         jobs = session.execute(stmt).scalars().all()
@@ -55,7 +55,7 @@ def process_job():
                 session.commit()
                 handle_file(job_file)
             elif job.job_status == "VALIDATED_OK":
-                #TODO Should we check the file here so we don't autoprocess every job?
+                # TODO Should we check the file here so we don't autoprocess every job?
                 job.job_status = "PROCESSING_IN_PROGRESS"
                 session.commit()
 
