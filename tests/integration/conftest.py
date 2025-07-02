@@ -1,5 +1,6 @@
 import logging
 from multiprocessing import Process
+from pathlib import Path
 from time import sleep
 
 import pytest
@@ -37,6 +38,10 @@ def run_test_app():
 
     logger.info("TEST CLEAR DOWN: Clearing down directories and database")
     clear_db()
+    readiness_file = Path(config.READINESS_FILE_PATH)
+    if readiness_file.exists():
+        readiness_file.unlink()
+
 
 
 def terminate_test_app(test_app: Process):
