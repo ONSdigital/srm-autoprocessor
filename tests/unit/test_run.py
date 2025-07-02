@@ -444,8 +444,11 @@ def test_process_job_validation_ok():
         6,
         job_status="VALIDATED_OK",
     )
+    job_file = Path(__file__).parent.parent.joinpath("resources", job.file_name)
 
-    with patch("srm_autoprocessor.run.Session") as mock_session:
+    with patch("srm_autoprocessor.run.get_file_path", return_value=job_file), patch(
+        "srm_autoprocessor.run.handle_file"
+    ), patch("srm_autoprocessor.run.Session") as mock_session:
         mock_instance = mock_session.return_value.__enter__.return_value
         mock_instance.execute.return_value.scalars.return_value.all.return_value = [job]
         # When

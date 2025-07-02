@@ -37,27 +37,24 @@ def process_job() -> None:
         print(f"Jobs available: {len(jobs)}")
         for job in jobs:
             print(f"Job id: {job.id}, status: {job.job_status}, type: {job.job_type}, file name: {job.file_name}")
-            if job.job_status in ["FILE_UPLOADED", "STAGING_IN_PROGRESS"]:
-                job_file: Path | None = get_file_path(job)
-                if job_file is None:
-                    # Do we want to delete the job if the file does not exist? Support tool currently just loops because it expects the file to be picked up by another worker.
-                    logger.error(f"File {job.file_name} does not exist for job {job.id}")
-                    continue
+            job_file: Path | None = get_file_path(job)
+            if job_file is None:
+                # Do we want to delete the job if the file does not exist? Support tool currently just loops because it expects the file to be picked up by another worker.
+                logger.error(f"File {job.file_name} does not exist for job {job.id}")
+                continue
             if job.job_status == "FILE_UPLOADED":
                 job_status = process_file_with_header(job, job_file)
                 job.job_status = job_status
                 session.commit()
-                handle_file(job_file)
             elif job.job_status == "STAGING_IN_PROGRESS":
                 logger.info(f"Job {job.id} is in staging, processing file")
                 job_status = staging_job_rows(job, job_file, session)
                 job.job_status = job_status
                 session.commit()
-                handle_file(job_file)
             elif job.job_status == "VALIDATED_OK":
-                # TODO Should we check the file here so we don't autoprocess every job?
                 job.job_status = "PROCESSING_IN_PROGRESS"
                 session.commit()
+            handle_file(job_file)
 
 
 def handle_file(job_file: Path | None) -> None:
