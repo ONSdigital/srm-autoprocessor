@@ -71,3 +71,5 @@ megalint:  ## Run the mega-linter.
 .PHONY: docker-build
 docker-build:  ## Build the Docker image
 	docker build -t europe-west2-docker.pkg.dev/ssdc-rm-ci/docker/srm-autoprocessor .
+
+build: clean install-dev format lint test docker-build  ## Run a fresh install, check, test and docker build
