@@ -55,11 +55,11 @@ mypy:  ## Run mypy.
 
 .PHONY: install
 install:  ## Install the dependencies excluding dev.
-	pipenv install --only main
+	pipenv install
 
 .PHONY: install-dev
 install-dev:  ## Install the dependencies including dev.
-	pipenv install
+	pipenv install --dev
 
 .PHONY: megalint
 megalint:  ## Run the mega-linter.
