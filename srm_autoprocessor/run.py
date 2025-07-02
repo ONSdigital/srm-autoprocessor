@@ -34,9 +34,7 @@ def process_job() -> None:
     with Session(engine) as session:
         stmt = select(Job).where(Job.job_status.in_(["FILE_UPLOADED", "STAGING_IN_PROGRESS", "VALIDATED_OK"]))
         jobs = session.execute(stmt).scalars().all()
-        print(f"Jobs available: {len(jobs)}")
         for job in jobs:
-            print(f"Job id: {job.id}, status: {job.job_status}, type: {job.job_type}, file name: {job.file_name}")
             job_file: Path | None = get_file_path(job)
             if job_file is None:
                 # Do we want to delete the job if the file does not exist? Support tool currently just loops because it expects the file to be picked up by another worker.
@@ -97,7 +95,6 @@ def process_file_with_header(job: Job, job_file: Path | None) -> str:
         expected_columns = [
             validation_rule["columnName"] for validation_rule in job.collection_exercise.survey.sample_validation_rules
         ]
-        print(expected_columns)
         if len(header) != len(expected_columns):
             logger.error(f"Header row does not match expected columns for job {job.id}")
             job_status = "VALIDATED_TOTAL_FAILURE"
