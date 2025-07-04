@@ -1,0 +1,24 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+sqlalchemy = "*"
+structlog = "*"
+psycopg2-binary = "*"
+pytz = "*"
+google-cloud-storage = "*"
+types-pytz = "*"
+
+[dev-packages]
+pylint = "*"
+black = "*"
+pytest = "*"
+pytest-xdist = "*"
+ruff = "*"
+pytest-cov = "*"
+mypy = "*"
+
+[requires]
+python_version = "3.12"

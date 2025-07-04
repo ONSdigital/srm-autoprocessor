@@ -6,10 +6,10 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Linting: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
-[![poetry-managed](https://img.shields.io/badge/poetry-managed-blue)](https://python-poetry.org/)
+[![pipenv-managed](https://img.shields.io/badge/pipenv-managed-blue)](https://pipenv.pypa.io/en/latest/)
 [![License - MIT](https://img.shields.io/badge/licence%20-MIT-1ac403.svg)](https://github.com/ONSdigital/srm-autoprocessor/blob/main/LICENSE)
 
-Microservice to automatically process sample jobs 
+Microservice to automatically process sample jobs
 
 ---
 
@@ -37,7 +37,7 @@ Ensure you have the following installed:
 
 1. **Python**: Version specified in `.python-version`. We recommend using [pyenv](https://github.com/pyenv/pyenv) for
    managing Python versions.
-2. **[Poetry](https://python-poetry.org/)**: This is used to manage package dependencies and virtual
+2. **[Pipenv](https://pipenv.pypa.io/en/latest/)**: This is used to manage package dependencies and virtual
    environments.
 3. **[Docker](https://docs.docker.com/engine/install/)**
 4. **Operation System**: Ubuntu/MacOS
@@ -52,8 +52,8 @@ Ensure you have the following installed:
 
 2. Install dependencies
 
-   [Poetry](https://python-poetry.org/) is used to manage dependencies in this project. For more information, read
-   the [Poetry documentation](https://python-poetry.org/).
+   [Pipenv](https://pipenv.pypa.io/en/latest/) is used to manage dependencies in this project. For more information, read
+   the [Pipenv documentation](https://pipenv.pypa.io/en/latest/).
 
    To install all dependencies, including development dependencies, run:
 
