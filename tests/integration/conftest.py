@@ -43,7 +43,6 @@ def run_test_app():
         readiness_file.unlink()
 
 
-
 def terminate_test_app(test_app: Process):
     logger.info("TEST CLEAR DOWN: Terminating test app")
     test_app.terminate()
