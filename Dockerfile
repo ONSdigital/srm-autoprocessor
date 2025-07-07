@@ -1,4 +1,6 @@
-FROM europe-west2-docker.pkg.dev/ons-ci-rm/docker/python-pipenv:3.12 AS build
+ARG  python_pipenv_build_image=europe-west2-docker.pkg.dev/ons-ci-rm/docker/python-pipenv:3.12
+# hadolint ignore=DL3006
+FROM ${python_pipenv_build_image} AS build
 
 ENV PIPENV_VENV_IN_PROJECT=1
 
