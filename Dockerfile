@@ -1,5 +1,4 @@
-ARG  python_pipenv_build_image=europe-west2-docker.pkg.dev/ons-ci-rm/docker/python-pipenv:3.12
-FROM ${python_pipenv_build_image} AS build
+FROM europe-west2-docker.pkg.dev/ons-ci-rm/docker/python-pipenv:3.12 AS build
 
 ENV PIPENV_VENV_IN_PROJECT=1
 
@@ -16,9 +15,8 @@ RUN groupadd -g 1000 autoprocessor && \
 WORKDIR /home/autoprocessor
 CMD ["/home/autoprocessor/venv/bin/python", "run.py"]
 
-RUN mkdir -v /home/autoprocessor/venv && chown autoprocessor:autoprocessor /home/autoprocessor/venv
-RUN mkdir /home/autoprocessor/.postgresql
-RUN chown autoprocessor:autoprocessor /home/autoprocessor/.postgresql
+RUN mkdir -v /home/autoprocessor/venv /home/autoprocessor/.postgresql && \
+    chown autoprocessor:autoprocessor /home/autoprocessor/venv /home/autoprocessor/.postgresql
 
 COPY --chown=autoprocessor:autoprocessor --from=build /home/autoprocessor/.venv/ /home/autoprocessor/venv/
 COPY --chown=autoprocessor:autoprocessor . /home/autoprocessor/
