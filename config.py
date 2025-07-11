@@ -52,9 +52,7 @@ class DevelopmentConfig(Config):
         f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
     RUN_MODE = os.getenv("RUN_MODE", "LOCAL")
-    # RUN_MODE = os.getenv("RUN_MODE", "CLOUD")
     SAMPLE_LOCATION = os.getenv("SAMPLE_LOCATION", "./sample_files")
-    # SAMPLE_LOCATION = os.getenv("SAMPLE_LOCATION", "ssdc-rm-dev-sample-file-transfer-bucket")
 
 
 class UnitTestConfig(DevelopmentConfig):

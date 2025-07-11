@@ -37,7 +37,6 @@ def process_job() -> None:
         for job in jobs:
             job_file: Path | None = get_file_path(job)
             if job_file is None:
-                # Do we want to delete the job if the file does not exist? Support tool currently just loops because it expects the file to be picked up by another worker.
                 logger.error(f"File {job.file_name} does not exist for job {job.id}")
                 continue
             if job.job_status == "FILE_UPLOADED":
