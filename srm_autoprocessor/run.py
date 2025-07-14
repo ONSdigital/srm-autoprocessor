@@ -22,6 +22,7 @@ CHUNK_SIZE = 500
 
 
 def run_app() -> None:
+    """Run the application to process jobs."""
     logger.info("App is running")
     logger.info("Check to see if any jobs available")
     while True:
@@ -31,6 +32,7 @@ def run_app() -> None:
 
 
 def process_job() -> None:
+    """Searches for jobs that are in the FILE_UPLOADED, STAGING_IN_PROGRESS, or VALIDATED_OK status and processes them."""
     with Session(engine) as session:
         stmt = select(Job).where(Job.job_status.in_(["FILE_UPLOADED", "STAGING_IN_PROGRESS", "VALIDATED_OK"]))
         jobs = session.execute(stmt).scalars().all()
@@ -55,11 +57,13 @@ def process_job() -> None:
 
 
 def handle_file(job_file: Path | None) -> None:
+    """Removes the temporary file if it exists."""
     if config.RUN_MODE == "CLOUD" and job_file is not None:
         job_file.unlink(missing_ok=True)  # Remove the temporary file if it exists
 
 
 def get_file_path(job: Job) -> Path | None:
+    """Get the file path for the job based on the run mode."""
     if config.RUN_MODE == "CLOUD":
         client = storage.Client()
         bucket = client.bucket(config.SAMPLE_LOCATION)
@@ -80,6 +84,7 @@ def get_file_path(job: Job) -> Path | None:
 
 
 def process_file_with_header(job: Job, job_file: Path | None) -> str:
+    """Method to check if the files header row matches the expected columns for the sample."""
     if not job.collection_exercise.survey.sample_with_header_row:
         return "STAGING_IN_PROGRESS"
     if job_file is None:
@@ -115,6 +120,7 @@ def process_file_with_header(job: Job, job_file: Path | None) -> str:
 
 
 def staging_job_rows(job: Job, job_file: Path | None, session: Session) -> str:
+    """Reads the csv file and puts them into chunks so that they can be staged in the database."""
     if job_file is None:
         logger.error(f"File {job.file_name} does not exist for job {job.id}")
         job_status = "VALIDATED_TOTAL_FAILURE"
@@ -140,6 +146,7 @@ def staging_job_rows(job: Job, job_file: Path | None, session: Session) -> str:
 
 
 def staging_chunks(csvfile: Any, header: list[str], job: Job, session: Session) -> str:
+    """Puts the rows into the database ready to be validated in job processor."""
     job_rows = []
     i = 0
     while i < CHUNK_SIZE:

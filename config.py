@@ -82,6 +82,7 @@ class IntegrationTestConfig(DevelopmentConfig):
         f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
     SAMPLE_LOCATION = os.getenv("SAMPLE_LOCATION", str(Path(__file__).parent.joinpath("tests/resources")))
+    DELETE_TEMP_FILE = strtobool(os.getenv("DELETE_TEMP_FILE", "True"))
 
 
 config = get_config()
