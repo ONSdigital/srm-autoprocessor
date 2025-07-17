@@ -15,16 +15,45 @@ jobs:
   lint-test:
     name: Lint and Test
     runs-on: ubuntu-22.04
+    # Add "id-token" with the required permissions.
+    permissions:
+      contents: "read"
+      id-token: "write"
     steps:
       - uses: actions/checkout@v4
-      - name: Install Poetry
-        run: pipx install poetry==1.8.3
+
+      # Authenticate with Google Cloud to acquire an access token
+      - id: auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: "access_token"
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.SERVICE_ACCOUNT }}
+
+      # Authenticating with Dockerhub ensures image pulls are authenticated, so not as severely rate limited
+      - name: Log in to Dockerhub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Also log docker in to GCP artifact registry, to allow image pulls from our private registries
+      - name: Log in to Google Docker Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: europe-west2-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version-file: .python-version
-          cache: poetry
+          cache: pipenv
+
+      - name: Install Pipenv
+        run: pipx install pipenv==2024.0.1
 
       - name: Install dependencies
         run: make install-dev
@@ -34,3 +63,6 @@ jobs:
 
       - name: Test
         run: make test
+
+      - name: Docker Build
+        run: make docker-build

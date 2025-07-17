@@ -17,34 +17,59 @@ clean: ## Clean the temporary files.
 
 .PHONY: format
 format:  ## Format the code.
-	poetry run black .
-	poetry run ruff check . --fix
+	pipenv run black .
+	pipenv run ruff check . --fix
 
 .PHONY: lint
 lint:  ## Run all linters (black/ruff/pylint/mypy).
-	poetry run black --check .
-	poetry run ruff check .
+	pipenv run black --check .
+	pipenv run ruff check .
 	make mypy
 
 .PHONY: test
-test:  ## Run the tests and check coverage.
-	poetry run pytest -n auto --cov=srm_autoprocessor --cov-report term-missing --cov-fail-under=100
+test:  integration-down integration-up ## Run the tests and check coverage.
+	ENVIRONMENT=INTEGRATION_TESTS pipenv run pytest tests/ --cov=srm_autoprocessor --cov-report term-missing --cov-fail-under=90
+	docker compose -f tests/integration/docker-compose.yml down
+
+.PHONY: unit-test
+unit-test:  ## Run just the unit tests and check coverage.
+	ENVIRONMENT=TEST pipenv run pytest tests/unit --cov=srm_autoprocessor --cov-report term-missing --cov-fail-under=90
+
+.PHONY: integration-up
+integration-up:  ## Bring up the Docker Compose to services the integration tests depend on (database etc.)
+	docker compose -f tests/integration/docker-compose.yml up -d
+	bash ./tests/integration/wait_for_dependencies.sh
+
+.PHONY: integration-down
+integration-down:  ## Tear down the integration test docker containers
+	docker compose -f tests/integration/docker-compose.yml down
+
+.PHONY: integration-tests
+integration-tests: integration-down integration-up  ## Run the integration tests (and the services they depend on)
+	ENVIRONMENT=INTEGRATION_TESTS pipenv run pytest tests/integration
+	docker compose -f tests/integration/docker-compose.yml down
 
 .PHONY: mypy
 mypy:  ## Run mypy.
-	poetry run mypy srm_autoprocessor
+	pipenv run mypy srm_autoprocessor
 
 .PHONY: install
 install:  ## Install the dependencies excluding dev.
-	poetry install --only main
+	pipenv install
 
 .PHONY: install-dev
 install-dev:  ## Install the dependencies including dev.
-	poetry install
+	pipenv install --dev
 
 .PHONY: megalint
 megalint:  ## Run the mega-linter.
 	docker run --platform linux/amd64 --rm \
 		-v /var/run/docker.sock:/var/run/docker.sock:rw \
 		-v $(shell pwd):/tmp/lint:rw \
-		oxsecurity/megalinter:v7
+		oxsecurity/megalinter:v8
+
+.PHONY: docker-build
+docker-build:  ## Build the Docker image
+	docker build -t europe-west2-docker.pkg.dev/ssdc-rm-ci/docker/srm-autoprocessor .
+
+build: clean install-dev format lint test docker-build  ## Run a fresh install, check, test and docker build

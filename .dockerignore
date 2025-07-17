@@ -1,0 +1,7 @@
+.*
+*.md
+Dockerfile
+tests/
+Makefile
+Pipfile
+sample_files/
