@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import quote
 
 from srm_autoprocessor.common.strtobool import strtobool
 
@@ -10,7 +11,7 @@ class Config:
 
     # DB Config
     POSTGRES_USER = os.getenv("POSTGRES_USER")
-    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+    POSTGRES_PASSWORD = quote(os.getenv("POSTGRES_PASSWORD", "<PASSWORD>"))
     POSTGRES_DB = os.getenv("POSTGRES_DB")
     POSTGRES_HOST = os.getenv("POSTGRES_HOST")
     POSTGRES_PORT = os.getenv("POSTGRES_PORT")
