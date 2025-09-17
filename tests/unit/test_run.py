@@ -195,7 +195,7 @@ def test_deletes_job_rows_on_validation_failure():
         result = staging_job_rows(job, job_file, session)
     assert result == "VALIDATED_TOTAL_FAILURE"
     session.execute.assert_called_once()
-    args, kwargs = session.execute.call_args
+    args, _kwargs = session.execute.call_args
     assert isinstance(args[0], delete(JobRow).__class__)
     assert str(args[0]) == str(delete(JobRow).where(JobRow.job_id == job.id))
 
