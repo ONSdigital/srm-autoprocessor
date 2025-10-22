@@ -9,7 +9,7 @@ COPY Pipfile* /home/autoprocessor/
 
 RUN /root/.local/bin/pipenv sync
 
-FROM python:3.12.10-slim@sha256:bae1a061b657f403aaacb1069a7f67d91f7ef5725ab17ca36abc5f1b2797ff92
+FROM python:3.12.12-slim@sha256:dc9e92fcdc085ad86dda976f4cfc58856dba33a438a16db37ff00151b285c8ca
 
 RUN groupadd -g 1000 autoprocessor && \
     useradd -r --create-home -u 1000 -g autoprocessor autoprocessor
