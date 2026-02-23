@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
+if [ -z "$CONTAINER_CLI" ]; then CONTAINER_CLI="docker"; fi
+
 POSTGRES_CONTAINER=postgres-autoprocessor-its
 echo "Waiting for [$POSTGRES_CONTAINER] to be ready"
 
 while true; do
-    response=$(docker inspect $POSTGRES_CONTAINER -f "{{ .State.Health.Status }}")
+    response=$($CONTAINER_CLI inspect $POSTGRES_CONTAINER -f "{{ .State.Health.Status }}")
     if [[ "$response" == "healthy" ]]; then
         echo "[$POSTGRES_CONTAINER] is ready"
         break
