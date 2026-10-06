@@ -99,13 +99,9 @@ def process_file_with_header(job: Job, job_file: Path | None) -> str:
         expected_columns = [
             validation_rule["columnName"] for validation_rule in job.collection_exercise.survey.sample_validation_rules
         ]
-        if len(header) != len(expected_columns):
-            logger.error(f"Header row does not match expected columns for job {job.id}")
-            job_status = "VALIDATED_TOTAL_FAILURE"
-            job.fatal_error_description = "Header row does not have expected number of columns"
-            return job_status
-        else:
-            for header_row, expected_column in zip(header, expected_columns):
+
+        try:
+            for header_row, expected_column in zip(header, expected_columns, strict=True):
                 if header_row != expected_column:
                     logger.error(
                         f"Header row {header_row} does not match expected column {expected_column} for job {job.id}"
@@ -115,6 +111,11 @@ def process_file_with_header(job: Job, job_file: Path | None) -> str:
                         f"Header row {header_row} does not match expected column {expected_column}"
                     )
                     return job_status
+        except ValueError:
+            logger.error(f"Header row does not match expected columns for job {job.id}")
+            job_status = "VALIDATED_TOTAL_FAILURE"
+            job.fatal_error_description = "Header row does not have expected number of columns"
+            return job_status
 
     return "STAGING_IN_PROGRESS"
 
